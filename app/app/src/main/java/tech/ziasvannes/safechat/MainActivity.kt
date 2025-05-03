@@ -7,39 +7,22 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import dagger.hilt.android.AndroidEntryPoint
+import tech.ziasvannes.safechat.presentation.chat.ChatScreen
 import tech.ziasvannes.safechat.ui.theme.SafeChatTheme
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             SafeChatTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) {
-                    ChatScreen(modifier = Modifier.padding(it))
+                Scaffold(modifier = Modifier.fillMaxSize()) { paddingValues ->
+                    ChatScreen(modifier = Modifier.padding(paddingValues))
                 }
             }
         }
-    }
-}
-
-
-@Composable
-fun ChatScreen(
-    modifier: Modifier = Modifier
-) {
-    // This will be the chat screen, it will be a contact card, a list of messages, and a text field to send messages
-
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ChatScreenPreview() {
-    SafeChatTheme {
-        ChatScreen()
     }
 }

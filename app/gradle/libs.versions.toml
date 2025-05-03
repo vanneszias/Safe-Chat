@@ -1,21 +1,49 @@
 [versions]
-agp = "8.9.1"
-kotlin = "2.0.21"
-coreKtx = "1.10.1"
+# Core dependencies
+agp = "8.2.2"                   # Latest stable Android Gradle Plugin
+kotlin = "1.9.22"               # Latest stable Kotlin that works well with AGP 8.2.2
+compose = "1.6.0"               # Latest stable Compose
+compose-compiler = "1.5.8"      # Kotlin compiler compatibility for Compose
+coreKtx = "1.12.0"             # Latest stable Core KTX
 junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
-lifecycleRuntimeKtx = "2.6.1"
-activityCompose = "1.8.0"
-composeBom = "2024.09.00"
+lifecycleRuntimeKtx = "2.7.0"   # Latest stable Lifecycle
+activityCompose = "1.8.2"       # Latest stable Activity Compose
+composeBom = "2024.02.00"       # Latest stable Compose BOM
+
+# DI
+hilt = "2.50"                   # Latest stable Hilt
+hiltNavigationCompose = "1.1.0"
+
+# Database
+room = "2.6.1"                  # Latest stable Room
+
+# Networking
+retrofit = "2.9.0"              # Latest stable Retrofit
+okhttp = "4.12.0"              # Latest stable OkHttp
+gson = "2.10.1"                # Latest stable Gson
+
+# Async
+coroutines = "1.7.3"           # Latest stable Coroutines
+
+# Security
+security-crypto = "1.1.0-alpha06"  # Latest AndroidX Security
+tink = "1.12.0"                   # Latest Google Tink for cryptography
+conscrypt = "2.5.2"               # Latest Conscrypt for better TLS
+
+# Testing
+mockk = "1.13.9"                # Latest stable MockK
+turbine = "1.0.0"               # Latest stable Turbine for Flow testing
 
 [libraries]
+# AndroidX Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }
-androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
-androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+
+# Compose
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
@@ -24,9 +52,43 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose" }
+
+# Hilt
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+
+# Room
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+
+# Retrofit
+retrofit-core = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+
+# Coroutines
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+
+# Security
+security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "security-crypto" }
+tink-android = { group = "com.google.crypto.tink", name = "tink-android", version.ref = "tink" }
+conscrypt = { group = "org.conscrypt", name = "conscrypt-android", version.ref = "conscrypt" }
+
+# Testing
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
