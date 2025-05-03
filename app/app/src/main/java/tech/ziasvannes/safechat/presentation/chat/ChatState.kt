@@ -1,6 +1,7 @@
 package tech.ziasvannes.safechat.presentation.chat
 
 import tech.ziasvannes.safechat.data.models.Contact
+import tech.ziasvannes.safechat.data.models.EncryptionStatus
 import tech.ziasvannes.safechat.data.models.Message
 
 data class ChatState(
@@ -9,5 +10,6 @@ data class ChatState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val messageText: String = "",
-    val encryptionStatus: EncryptionStatus = EncryptionStatus.NOT_ENCRYPTED
+    val encryptionStatus: EncryptionStatus = EncryptionStatus.NOT_ENCRYPTED,
+    val isEncrypted: Boolean
 )

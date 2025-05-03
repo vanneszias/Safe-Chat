@@ -1,5 +1,6 @@
 package tech.ziasvannes.safechat.presentation.chat
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -8,10 +9,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import tech.ziasvannes.safechat.data.models.Message
 import tech.ziasvannes.safechat.data.models.MessageType
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
-import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
 import tech.ziasvannes.safechat.domain.usecase.InitiateKeyExchangeUseCase
 import tech.ziasvannes.safechat.domain.usecase.SendMessageUseCase
@@ -26,7 +25,7 @@ class ChatViewModel @Inject constructor(
     private val initiateKeyExchangeUseCase: InitiateKeyExchangeUseCase
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ChatState())
+    private val _state = MutableStateFlow(ChatState(isEncrypted = true))
     val state: StateFlow<ChatState> = _state.asStateFlow()
 
     /**

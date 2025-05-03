@@ -13,7 +13,8 @@ import tech.ziasvannes.safechat.data.local.entity.MessageEntity
         ContactEntity::class,
         MessageEntity::class
     ],
-    version = 1
+    version = 1,
+    exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class SafeChatDatabase : RoomDatabase() {
