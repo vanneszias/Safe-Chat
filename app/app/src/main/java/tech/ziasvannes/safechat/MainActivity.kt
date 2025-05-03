@@ -5,17 +5,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.ui.Modifier
 import dagger.hilt.android.AndroidEntryPoint
-import tech.ziasvannes.safechat.presentation.chat.ChatScreen
-import tech.ziasvannes.safechat.ui.theme.SafeChatTheme
+import tech.ziasvannes.safechat.presentation.SafeChatApp
+import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     /**
-     * Initializes the activity, sets up edge-to-edge display, and composes the main chat UI using Jetpack Compose.
+     * Initializes the activity, sets up edge-to-edge display, and composes the main app UI using Jetpack Compose.
      *
      * @param savedInstanceState The previously saved instance state, or null if none exists.
      */
@@ -24,9 +21,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SafeChatTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { paddingValues ->
-                    ChatScreen(modifier = Modifier.padding(paddingValues))
-                }
+                SafeChatApp()
             }
         }
     }

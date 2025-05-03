@@ -5,7 +5,7 @@ import tech.ziasvannes.safechat.data.models.Contact
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
 import javax.inject.Inject
 
-class GetContactsUseCase @Inject constructor(
+open class GetContactsUseCase @Inject constructor(
     private val contactRepository: ContactRepository
 ) {
     /**
@@ -15,6 +15,6 @@ class GetContactsUseCase @Inject constructor(
          *
          * @return A [Flow] that emits lists of [Contact] objects.
          */
-        suspend operator fun invoke(): Flow<List<Contact>> =
+        open suspend operator fun invoke(): Flow<List<Contact>> =
         contactRepository.getContacts()
 }
