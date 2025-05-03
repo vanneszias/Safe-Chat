@@ -13,6 +13,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import tech.ziasvannes.safechat.data.models.Message
 
+/**
+ * Displays the chat interface, including the message list, input field, loading indicator, and error dialog.
+ *
+ * Observes chat state from the provided view model to render messages, handle user input, and display UI feedback such as loading and error states.
+ */
 @Composable
 fun ChatScreen(
     modifier: Modifier = Modifier,
@@ -74,6 +79,12 @@ fun ChatScreen(
     }
 }
 
+/**
+ * Displays a single chat message within a card, showing its content and status.
+ *
+ * @param message The chat message to display.
+ * @param modifier Optional modifier for customizing the layout or appearance.
+ */
 @Composable
 private fun MessageItem(
     message: Message,
@@ -100,6 +111,15 @@ private fun MessageItem(
     }
 }
 
+/**
+ * Displays a horizontal input row for composing and sending chat messages.
+ *
+ * Shows a text field for message entry and a send button, which is enabled only when the input is not blank.
+ *
+ * @param text The current message input text.
+ * @param onTextChange Callback invoked when the input text changes.
+ * @param onSendClick Callback invoked when the send button is clicked.
+ */
 @Composable
 private fun MessageInput(
     text: String,

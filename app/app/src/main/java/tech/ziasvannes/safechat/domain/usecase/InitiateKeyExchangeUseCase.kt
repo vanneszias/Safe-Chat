@@ -10,6 +10,14 @@ class InitiateKeyExchangeUseCase @Inject constructor(
     private val encryptionRepository: EncryptionRepository,
     private val contactRepository: ContactRepository
 ) {
+    /**
+     * Initiates a key exchange process for the specified contact.
+     *
+     * Generates a new cryptographic key pair, securely stores it, and updates the contact's public key with the newly generated public key. Returns a [Result] indicating success or failure of the operation.
+     *
+     * @param contactId The unique identifier of the contact for whom the key exchange is initiated.
+     * @return A [Result] containing [Unit] on success, or an exception if the process fails.
+     */
     suspend operator fun invoke(contactId: UUID): Result<Unit> = runCatching {
         // Generate new key pair for this exchange
         val keyPair = encryptionRepository.generateKeyPair()

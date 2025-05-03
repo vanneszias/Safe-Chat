@@ -22,6 +22,12 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
     
+    /**
+     * Provides a singleton instance of the SafeChat Room database.
+     *
+     * @param context The application context used to initialize the database.
+     * @return The singleton SafeChatDatabase instance.
+     */
     @Provides
     @Singleton
     fun provideDatabase(
@@ -32,23 +38,50 @@ object DatabaseModule {
         "safechat.db"
     ).build()
     
+    /**
+     * Provides the ContactDao instance from the SafeChatDatabase.
+     *
+     * @return The ContactDao for accessing contact-related database operations.
+     */
     @Provides
     fun provideContactDao(database: SafeChatDatabase): ContactDao = database.contactDao()
     
+    /**
+     * Provides the MessageDao instance from the SafeChatDatabase.
+     *
+     * @param database The Room database instance for SafeChat.
+     * @return The MessageDao for accessing message-related database operations.
+     */
     @Provides
     fun provideMessageDao(database: SafeChatDatabase): MessageDao = database.messageDao()
     
-    @Provides
+    /**
+         * Provides a singleton instance of ContactRepository using the given ContactDao.
+         *
+         * @return A ContactRepository implementation backed by the provided ContactDao.
+         */
+        @Provides
     @Singleton
     fun provideContactRepository(contactDao: ContactDao): ContactRepository =
         ContactRepositoryImpl(contactDao)
     
-    @Provides
+    /**
+         * Provides a singleton instance of MessageRepository using the given MessageDao.
+         *
+         * @param messageDao The DAO for accessing message data in the database.
+         * @return A MessageRepository implementation backed by the provided MessageDao.
+         */
+        @Provides
     @Singleton
     fun provideMessageRepository(messageDao: MessageDao): MessageRepository =
         MessageRepositoryImpl(messageDao)
         
-    @Provides
+    /**
+         * Provides a singleton instance of the encryption repository for handling encryption-related operations.
+         *
+         * @return An instance of EncryptionRepository.
+         */
+        @Provides
     @Singleton
     fun provideEncryptionRepository(): EncryptionRepository =
         EncryptionRepositoryImpl()

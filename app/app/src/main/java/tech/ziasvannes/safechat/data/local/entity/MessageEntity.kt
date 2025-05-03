@@ -20,6 +20,13 @@ data class MessageEntity(
     val encryptedContent: ByteArray,
     val iv: ByteArray
 ) {
+    /**
+     * Converts this MessageEntity to a Message domain model object.
+     *
+     * Parses string-based UUID fields and copies all other properties directly.
+     *
+     * @return The corresponding Message object.
+     */
     fun toMessage(): Message = Message(
         id = UUID.fromString(id),
         content = content,
@@ -33,6 +40,14 @@ data class MessageEntity(
     )
 
     companion object {
+        /**
+         * Creates a MessageEntity from a Message domain model.
+         *
+         * Converts UUID fields in the Message to their string representations and copies all other properties directly.
+         *
+         * @param message The Message object to convert.
+         * @return A MessageEntity representing the given Message for database storage.
+         */
         fun fromMessage(message: Message): MessageEntity = MessageEntity(
             id = message.id.toString(),
             content = message.content,
@@ -46,6 +61,11 @@ data class MessageEntity(
         )
     }
 
+    /**
+     * Checks equality based on the message ID.
+     *
+     * Returns true if the other object is a `MessageEntity` with the same `id`, or if it is the same instance.
+     */
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -54,6 +74,13 @@ data class MessageEntity(
         return id == other.id
     }
 
+    /**
+     * Returns the hash code of this message entity, based solely on its unique ID.
+     *
+     * Ensures consistent hashing aligned with the equality check, which also relies on the ID field.
+     *
+     * @return The hash code of the message ID.
+     */
     override fun hashCode(): Int {
         return id.hashCode()
     }

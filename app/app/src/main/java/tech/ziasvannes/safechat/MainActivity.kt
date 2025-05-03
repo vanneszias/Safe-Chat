@@ -14,6 +14,13 @@ import tech.ziasvannes.safechat.ui.theme.SafeChatTheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    /**
+     * Initializes the activity, sets up edge-to-edge display, and configures the main UI using Jetpack Compose.
+     *
+     * Applies the app theme and displays the chat interface within a scaffold layout.
+     *
+     * @param savedInstanceState The previously saved instance state, or null if none exists.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

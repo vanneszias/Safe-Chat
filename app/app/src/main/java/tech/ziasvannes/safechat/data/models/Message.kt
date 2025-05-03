@@ -13,6 +13,11 @@ data class Message(
     val encryptedContent: ByteArray,
     val iv: ByteArray
 ) {
+    /**
+     * Checks if this message is equal to another object based on their unique identifiers.
+     *
+     * Returns true if the other object is a `Message` with the same `id`.
+     */
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -21,6 +26,13 @@ data class Message(
         return id == other.id
     }
 
+    /**
+     * Returns the hash code of the message based on its unique identifier.
+     *
+     * Only the `id` property is used to compute the hash code, ensuring consistency with the `equals` method.
+     *
+     * @return The hash code of the message's `id`.
+     */
     override fun hashCode(): Int {
         return id.hashCode()
     }
