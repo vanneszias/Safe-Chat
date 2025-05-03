@@ -2,6 +2,7 @@ package tech.ziasvannes.safechat.data.repository
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.util.Base64
 import com.google.crypto.tink.subtle.AesGcmJce
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 import java.math.BigInteger
@@ -147,5 +148,30 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
         val aesGcm = AesGcmJce(sharedSecret)
         val decryptedBytes = aesGcm.decrypt(encryptedContent, iv)
         return String(decryptedBytes)
+    }
+
+    /**
+     * Gets the current public key as a Base64-encoded string.
+     *
+     * @return The current public key encoded as a Base64 string, or null if no key exists.
+     */
+    override suspend fun getCurrentPublicKey(): String? {
+        return try {
+            val publicKey = getPublicKey()
+            Base64.encodeToString(publicKey.encoded, Base64.NO_WRAP)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Generates a new key pair and returns the public key as a Base64-encoded string.
+     *
+     * @return The newly generated public key encoded as a Base64 string.
+     */
+    override suspend fun generateNewKeyPair(): String {
+        val keyPair = generateKeyPair()
+        val publicKey = keyPair.public
+        return Base64.encodeToString(publicKey.encoded, Base64.NO_WRAP)
     }
 }

@@ -53,4 +53,18 @@ suspend fun encryptMessage(message: String, sharedSecret: ByteArray): Pair<ByteA
  * @return The decrypted original message as a string.
  */
 suspend fun decryptMessage(encryptedContent: ByteArray, iv: ByteArray, sharedSecret: ByteArray): String
+
+    /**
+ * Gets the current public key as a string representation.
+ *
+ * @return The current public key as a string, or null if no key exists.
+ */
+suspend fun getCurrentPublicKey(): String?
+
+    /**
+ * Generates a new key pair and returns the public key as a string.
+ *
+ * @return The newly generated public key as a string.
+ */
+suspend fun generateNewKeyPair(): String
 }
