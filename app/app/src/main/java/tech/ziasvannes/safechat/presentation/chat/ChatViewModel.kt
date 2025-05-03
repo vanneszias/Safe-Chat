@@ -3,7 +3,6 @@ package tech.ziasvannes.safechat.presentation.chat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +29,14 @@ class ChatViewModel @Inject constructor(
     private val _state = MutableStateFlow(ChatState())
     val state: StateFlow<ChatState> = _state.asStateFlow()
 
+    /**
+     * Handles chat-related events and updates the UI state or triggers actions accordingly.
+     *
+     * Processes events such as sending messages, updating message text, initiating chat loading,
+     * retrying encryption, and clearing error messages by delegating to the appropriate methods or updating state.
+     *
+     * @param event The chat event to handle.
+     */
     fun onEvent(event: ChatEvent) {
         when (event) {
             is ChatEvent.SendMessage -> {
@@ -50,6 +57,13 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Loads contact details and observes messages for the specified contact, updating the UI state accordingly.
+     *
+     * If an error occurs during loading or message collection, updates the state with a user-friendly error message.
+     *
+     * @param contactId The unique identifier of the contact whose chat is to be loaded.
+     */
     private fun loadChat(contactId: UUID) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
@@ -74,6 +88,13 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Sends a text message to the current contact and updates the UI state based on the result.
+     *
+     * If the message is sent successfully, clears the message input field. If sending fails, updates the state with the error message.
+     *
+     * @param content The text content of the message to send.
+     */
     private fun sendMessage(content: String) {
         viewModelScope.launch {
             val currentState = state.value
@@ -95,6 +116,12 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Attempts to re-establish end-to-end encryption with the current contact.
+     *
+     * Updates the UI state to reflect encryption status or any encountered error.
+     * If no contact is selected, the operation is skipped.
+     */
     private fun retryEncryption() {
         viewModelScope.launch {
             val currentState = state.value

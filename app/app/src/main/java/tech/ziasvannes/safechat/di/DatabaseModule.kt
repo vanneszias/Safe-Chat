@@ -22,6 +22,11 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
     
+    /**
+     * Provides a singleton instance of the SafeChat Room database.
+     *
+     * @return The application's SafeChatDatabase configured with the name "safechat.db".
+     */
     @Provides
     @Singleton
     fun provideDatabase(
@@ -32,23 +37,52 @@ object DatabaseModule {
         "safechat.db"
     ).build()
     
+    /**
+     * Provides an instance of ContactDao from the SafeChatDatabase.
+     *
+     * @param database The Room database instance used to access DAOs.
+     * @return The ContactDao for performing contact-related database operations.
+     */
     @Provides
     fun provideContactDao(database: SafeChatDatabase): ContactDao = database.contactDao()
     
+    /**
+     * Provides the MessageDao instance from the SafeChatDatabase.
+     *
+     * @param database The Room database instance for SafeChat.
+     * @return The MessageDao for accessing message-related database operations.
+     */
     @Provides
     fun provideMessageDao(database: SafeChatDatabase): MessageDao = database.messageDao()
     
-    @Provides
+    /**
+         * Provides a singleton instance of ContactRepository implemented by ContactRepositoryImpl.
+         *
+         * @param contactDao The DAO used for contact data operations.
+         * @return A ContactRepository for managing contact-related data.
+         */
+        @Provides
     @Singleton
     fun provideContactRepository(contactDao: ContactDao): ContactRepository =
         ContactRepositoryImpl(contactDao)
     
-    @Provides
+    /**
+         * Provides a singleton instance of MessageRepository backed by MessageRepositoryImpl.
+         *
+         * @param messageDao The DAO used for message data access.
+         * @return A MessageRepository implementation for managing message data.
+         */
+        @Provides
     @Singleton
     fun provideMessageRepository(messageDao: MessageDao): MessageRepository =
         MessageRepositoryImpl(messageDao)
         
-    @Provides
+    /**
+         * Provides a singleton instance of the encryption repository for handling encryption-related operations.
+         *
+         * @return An implementation of [EncryptionRepository].
+         */
+        @Provides
     @Singleton
     fun provideEncryptionRepository(): EncryptionRepository =
         EncryptionRepositoryImpl()
