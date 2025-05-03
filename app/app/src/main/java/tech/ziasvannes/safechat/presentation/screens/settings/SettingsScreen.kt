@@ -196,7 +196,7 @@ fun SettingsScreen(
             SettingsSection("About") {
                 SettingItem(
                     title = "App Version",
-                    description = "1.0.0",
+                    description = "1.0.0", // TODO Version get from buildconfig
                     icon = Icons.Default.Info,
                     onClick = {}
                 )

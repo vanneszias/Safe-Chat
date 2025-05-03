@@ -213,7 +213,7 @@ fun ContactListScreenPreview() {
 // Fake ViewModel for preview
 private class FakeContactViewModel(initialState: ContactState) : ContactViewModel(
     getContactsUseCase = FakeGetContactsUseCase(
-        contactRepository = TODO()
+        contactRepository = FakeContactRepository()
     ),
     contactRepository = FakeContactRepository()
 ) {
