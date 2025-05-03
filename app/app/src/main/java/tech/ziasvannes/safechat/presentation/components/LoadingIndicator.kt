@@ -28,6 +28,15 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  * @param message Optional message to display below the indicator
  * @param color The color of the loading indicator dots
  */
+/**
+ * Displays an animated loading indicator with three pulsing dots and an optional message.
+ *
+ * The dots animate in a staggered sequence to create a wave effect. An optional message can be shown below the indicator.
+ *
+ * @param modifier Modifier to be applied to the indicator layout.
+ * @param message Optional text displayed below the loading dots.
+ * @param color Color of the loading dots.
+ */
 @Composable
 fun LoadingIndicator(
     modifier: Modifier = Modifier,
@@ -125,12 +134,14 @@ fun LoadingIndicator(
 }
 
 /**
- * A loading dialog that blocks user interaction while showing a loading indicator.
+ * Displays a modal dialog with a loading indicator, blocking user interaction while active.
  *
- * @param isLoading Whether the loading dialog should be shown
- * @param message Optional message to display below the loading indicator
- * @param dismissOnBackPress Whether the dialog can be dismissed by pressing back
- * @param dismissOnClickOutside Whether the dialog can be dismissed by clicking outside
+ * Shows a loading animation and an optional message in a styled dialog when `isLoading` is true. The dialog can be configured to allow or prevent dismissal via back press or outside clicks.
+ *
+ * @param isLoading If true, the loading dialog is shown; otherwise, nothing is displayed.
+ * @param message Optional text displayed below the loading indicator.
+ * @param dismissOnBackPress If true, allows dismissal by pressing the back button.
+ * @param dismissOnClickOutside If true, allows dismissal by clicking outside the dialog.
  */
 @Composable
 fun LoadingDialog(
@@ -165,9 +176,9 @@ fun LoadingDialog(
 }
 
 /**
- * A full-screen loading indicator for use when loading entire screens.
+ * Displays a full-screen semi-transparent overlay with a centered animated loading indicator and an optional message.
  *
- * @param message Optional message to display below the loading indicator
+ * @param message The message to display below the loading indicator, or null to omit the message.
  */
 @Composable
 fun FullScreenLoading(
@@ -183,6 +194,11 @@ fun FullScreenLoading(
     }
 }
 
+/**
+ * Preview composable displaying examples of the LoadingIndicator with and without a message.
+ *
+ * Used for UI tooling to visualize the LoadingIndicator component in different configurations.
+ */
 @Preview(showBackground = true)
 @Composable
 fun LoadingIndicatorPreview() {

@@ -30,6 +30,14 @@ open class ContactViewModel @Inject constructor(
         onEvent(ContactEvent.LoadContacts)
     }
 
+    /**
+     * Handles UI events related to contacts and updates the ViewModel state accordingly.
+     *
+     * Processes events such as loading contacts, updating the search query, deleting a contact, and clearing errors.
+     * Navigation-related events are acknowledged but not handled within this function.
+     *
+     * @param event The contact-related UI event to handle.
+     */
     open fun onEvent(event: ContactEvent) {
         when (event) {
             is ContactEvent.LoadContacts -> {
@@ -53,6 +61,12 @@ open class ContactViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Loads the list of contacts asynchronously and updates the UI state with the results.
+     *
+     * Sets the loading state, collects contacts from the use case, applies search filtering based on the current query,
+     * and updates the state with the full and filtered contact lists. If an error occurs during loading, updates the state with an error message.
+     */
     private fun loadContacts() {
         _state.update { it.copy(isLoading = true) }
         
@@ -96,6 +110,13 @@ open class ContactViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Updates the search query and filters the contacts list based on the query.
+     *
+     * The filtered contacts include only those whose names contain the query string, case-insensitively.
+     *
+     * @param query The new search query to apply.
+     */
     private fun updateSearchQuery(query: String) {
         _state.update { currentState ->
             val filteredList = if (query.isBlank()) {
@@ -113,6 +134,13 @@ open class ContactViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Deletes a contact by its unique identifier and updates the state with an error message if the operation fails.
+     *
+     * The contact list is automatically updated via the repository's flow after deletion.
+     *
+     * @param contactId The unique identifier of the contact to delete.
+     */
     private fun deleteContact(contactId: java.util.UUID) {
         viewModelScope.launch {
             try {

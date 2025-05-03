@@ -24,6 +24,13 @@ open class ProfileViewModel @Inject constructor(
         onEvent(ProfileEvent.LoadProfile)
     }
 
+    /**
+     * Handles profile-related events and updates the profile state accordingly.
+     *
+     * Processes events such as loading profile data, toggling edit mode, updating the username, saving changes, selecting an avatar, toggling key visibility, generating a new key pair, and clearing errors.
+     *
+     * @param event The profile event to handle.
+     */
     open fun onEvent(event: ProfileEvent) {
         when (event) {
             is ProfileEvent.LoadProfile -> {
@@ -56,6 +63,11 @@ open class ProfileViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Loads the user's profile data and updates the state with the username and public key.
+     *
+     * Sets the loading state while fetching data and updates the state with an error message if loading fails.
+     */
     private fun loadProfile() {
         _state.update { it.copy(isLoading = true) }
         
@@ -86,6 +98,11 @@ open class ProfileViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Simulates saving the user's profile data and updates the state to reflect the result.
+     *
+     * Sets the loading state while saving, exits edit mode on success, and updates the error state if saving fails.
+     */
     private fun saveProfile() {
         _state.update { it.copy(isLoading = true) }
         
@@ -112,6 +129,13 @@ open class ProfileViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Updates the user's avatar by processing the provided URI and updating the profile state.
+     *
+     * Sets the loading state during processing and updates the avatar URL on success, or sets an error message if the operation fails.
+     *
+     * @param uri The URI of the new avatar image.
+     */
     private fun updateAvatar(uri: Uri) {
         _state.update { it.copy(isLoading = true) }
         
@@ -138,6 +162,11 @@ open class ProfileViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Asynchronously generates a new encryption key pair and updates the user's public key in the profile state.
+     *
+     * If key generation fails, updates the state with an error message.
+     */
     private fun generateNewKeyPair() {
         _state.update { it.copy(isLoading = true) }
         

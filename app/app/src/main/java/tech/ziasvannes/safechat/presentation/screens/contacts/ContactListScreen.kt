@@ -33,6 +33,14 @@ import tech.ziasvannes.safechat.presentation.components.SearchTextField
 import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
 import java.util.*
 
+/**
+ * Displays the contact list screen with search, loading, error handling, and navigation actions.
+ *
+ * Shows a top app bar with a refresh action, a floating action button to add a new contact, a search bar to filter contacts, and a list of contacts. Displays a loading indicator while contacts are being fetched and a snackbar for errors. Selecting a contact navigates to the chat screen; adding a contact navigates to the add contact screen.
+ *
+ * @param onNavigateToChat Callback invoked with the contact ID when a contact is selected.
+ * @param onNavigateToAddContact Callback invoked when the add contact button is pressed.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactListScreen(
@@ -163,6 +171,12 @@ fun ContactListScreen(
     }
 }
 
+/**
+ * Displays a preview of the contact list screen with mock contact data for UI development.
+ *
+ * Renders the `ContactListScreen` composable using sample contacts and a fake view model,
+ * allowing visualization of the UI without backend dependencies.
+ */
 @Preview(showBackground = true)
 @Composable
 fun ContactListScreenPreview() {
@@ -220,6 +234,11 @@ private class FakeContactViewModel(initialState: ContactState) : ContactViewMode
     private val _state = MutableStateFlow(initialState)
     override val state: StateFlow<ContactState> = _state.asStateFlow()
 
+    /**
+     * Handles contact-related events. This implementation performs no actions and is intended for preview or testing purposes.
+     *
+     * @param event The contact event to handle.
+     */
     override fun onEvent(event: ContactEvent) {
         // No-op for preview
     }
@@ -229,14 +248,63 @@ private class FakeContactViewModel(initialState: ContactState) : ContactViewMode
 private class FakeGetContactsUseCase(contactRepository: ContactRepository) : GetContactsUseCase(
     contactRepository
 ) {
-    override suspend fun invoke(): Flow<List<Contact>> = flowOf(emptyList())
+    /**
+ * Returns a flow that emits an empty list of contacts.
+ *
+ * This implementation is typically used for testing or preview purposes where no contact data is available.
+ *
+ * @return A flow emitting an empty list of contacts.
+ */
+override suspend fun invoke(): Flow<List<Contact>> = flowOf(emptyList())
 }
 
 private class FakeContactRepository : ContactRepository {
-    override suspend fun getContacts(): Flow<List<Contact>> = flowOf(emptyList())
-    override suspend fun addContact(contact: Contact) {}
-    override suspend fun updateContact(contact: Contact) {}
-    override suspend fun deleteContact(contactId: UUID) {}
-    override suspend fun getContactById(id: UUID): Contact? = null
-    override suspend fun searchContacts(query: String): Flow<List<Contact>> = flowOf(emptyList())
+    /**
+ * Returns a flow that emits an empty list of contacts.
+ *
+ * This implementation provides no contact data and is typically used for testing or preview purposes.
+ *
+ * @return A flow emitting an empty list of contacts.
+ */
+override suspend fun getContacts(): Flow<List<Contact>> = flowOf(emptyList())
+    /**
+ * No-op implementation of adding a contact.
+ *
+ * This method does nothing and is intended for use in fake or preview repositories.
+ */
+override suspend fun addContact(contact: Contact) {}
+    /**
+ * Updates the specified contact in the repository.
+ *
+ * This implementation performs no operation.
+ *
+ * @param contact The contact to update.
+ */
+override suspend fun updateContact(contact: Contact) {}
+    /**
+ * Deletes a contact with the specified ID.
+ *
+ * This implementation performs no operation.
+ *
+ * @param contactId The unique identifier of the contact to delete.
+ */
+override suspend fun deleteContact(contactId: UUID) {}
+    /**
+ * Returns null for any contact ID.
+ *
+ * This fake implementation does not retrieve contacts and always returns null.
+ *
+ * @param id The unique identifier of the contact.
+ * @return Always null.
+ */
+override suspend fun getContactById(id: UUID): Contact? = null
+    /**
+ * Returns an empty flow of contacts for any search query.
+ *
+ * This implementation is intended for testing or preview purposes and does not perform any actual search.
+ *
+ * @param query The search query string.
+ * @return A flow emitting an empty list of contacts.
+ */
+override suspend fun searchContacts(query: String): Flow<List<Contact>> = flowOf(emptyList())
 }

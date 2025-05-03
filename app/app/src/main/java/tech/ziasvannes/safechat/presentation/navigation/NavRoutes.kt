@@ -10,7 +10,12 @@ object NavRoutes {
     const val SETTINGS = "settings"
     const val ADD_CONTACT = "add_contact"
     
-    // Helper function to create chat route with contactId parameter
+    /**
+     * Returns the navigation route string for the chat screen with the specified contact ID.
+     *
+     * @param contactId The unique identifier of the contact to include in the chat route.
+     * @return The formatted chat route string for navigation.
+     */
     fun createChatRoute(contactId: String): String {
         return "chat/$contactId"
     }

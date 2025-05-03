@@ -20,6 +20,16 @@ import java.util.UUID
  * @param startDestination The starting destination route
  * @param modifier Optional modifier for styling
  */
+/**
+ * Sets up the navigation graph for the SafeChat application using Jetpack Compose Navigation.
+ *
+ * Defines navigation routes for contacts list, chat, profile, settings, and add contact screens.
+ * Handles navigation actions and argument parsing for each destination.
+ *
+ * @param navController Controls navigation between screens.
+ * @param startDestination The initial route to display; defaults to the contacts list.
+ * @param modifier Optional modifier for the navigation host.
+ */
 @Composable
 fun SafeChatNavHost(
     navController: NavHostController,

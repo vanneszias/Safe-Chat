@@ -23,6 +23,13 @@ open class SettingsViewModel @Inject constructor(
         onEvent(SettingsEvent.LoadSettings)
     }
 
+    /**
+     * Handles settings-related events by updating the settings state or triggering corresponding operations.
+     *
+     * Processes events such as loading settings, toggling options, updating retention periods, clearing messages, resetting settings, and clearing errors. Updates the state and persists changes as needed.
+     *
+     * @param event The settings event to handle.
+     */
     open fun onEvent(event: SettingsEvent) {
         when (event) {
             is SettingsEvent.LoadSettings -> {
@@ -60,6 +67,11 @@ open class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Loads the user settings and updates the state with default values.
+     *
+     * Sets the loading state while simulating an asynchronous fetch of settings. On success, updates the state with default settings values. On failure, updates the state with an error message.
+     */
     private fun loadSettings() {
         _state.update { it.copy(isLoading = true) }
         
@@ -91,6 +103,9 @@ open class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Simulates saving the current settings asynchronously and updates the state with an error message if saving fails.
+     */
     private fun saveSettings() {
         viewModelScope.launch {
             try {
@@ -107,6 +122,11 @@ open class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Clears all messages and updates the loading state.
+     *
+     * Simulates the message clearing process asynchronously. If an error occurs, updates the state with an error message.
+     */
     private fun clearAllMessages() {
         _state.update { it.copy(isLoading = true) }
         
@@ -128,6 +148,11 @@ open class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Resets all settings to their default values and updates the state accordingly.
+     *
+     * Sets the loading state during the operation and updates the state with an error message if the reset fails.
+     */
     private fun resetSettings() {
         _state.update { it.copy(isLoading = true) }
         

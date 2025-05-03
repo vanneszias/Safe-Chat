@@ -45,26 +45,26 @@ suspend fun computeSharedSecret(publicKey: PublicKey): ByteArray
  */
 suspend fun encryptMessage(message: String, sharedSecret: ByteArray): Pair<ByteArray, ByteArray>
     /**
- * Asynchronously decrypts the given encrypted content using the provided initialization vector and shared secret.
+ * Decrypts encrypted message content using the provided initialization vector and shared secret.
  *
- * @param encryptedContent The encrypted message data.
+ * @param encryptedContent The encrypted data to decrypt.
  * @param iv The initialization vector used during encryption.
  * @param sharedSecret The shared secret key for decryption.
- * @return The decrypted original message as a string.
+ * @return The original plaintext message.
  */
 suspend fun decryptMessage(encryptedContent: ByteArray, iv: ByteArray, sharedSecret: ByteArray): String
 
     /**
- * Gets the current public key as a string representation.
+ * Retrieves the current public key as a string, or null if no key is available.
  *
- * @return The current public key as a string, or null if no key exists.
+ * @return The string representation of the current public key, or null if no key exists.
  */
 suspend fun getCurrentPublicKey(): String?
 
     /**
- * Generates a new key pair and returns the public key as a string.
+ * Generates a new cryptographic key pair and returns the public key as a string.
  *
- * @return The newly generated public key as a string.
+ * @return The public key of the newly generated key pair, encoded as a string.
  */
 suspend fun generateNewKeyPair(): String
 }

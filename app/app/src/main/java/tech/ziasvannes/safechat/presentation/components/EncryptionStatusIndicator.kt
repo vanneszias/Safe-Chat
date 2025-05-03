@@ -33,6 +33,14 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  * @param status The current encryption status
  * @param modifier Optional modifier for styling
  */
+/**
+ * Displays an animated indicator representing the current encryption status of a chat session.
+ *
+ * Visually reflects the encryption state by animating background and icon colors, and applies a continuous rotation to the icon when encryption setup is in progress. The indicator shows an icon and a descriptive label corresponding to the provided status.
+ *
+ * @param status The current encryption status to display.
+ * @param modifier Optional modifier for styling and layout customization.
+ */
 @Composable
 fun EncryptionStatusIndicator(
     status: EncryptionStatus,
@@ -117,6 +125,11 @@ fun EncryptionStatusIndicator(
     }
 }
 
+/**
+ * Displays a preview of the EncryptionStatusIndicator composable in all encryption states.
+ *
+ * Shows the indicator for ENCRYPTED, NOT_ENCRYPTED, and KEY_EXCHANGE_IN_PROGRESS statuses within a themed surface for design-time inspection.
+ */
 @Preview(showBackground = true)
 @Composable
 fun EncryptionStatusIndicatorPreview() {

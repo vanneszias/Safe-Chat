@@ -29,6 +29,17 @@ import java.util.UUID
  * @param viewModel The view model responsible for chat state and logic
  */
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Displays the chat interface for a selected contact, including message history, input field, and status indicators.
+ *
+ * Shows a top app bar with the contact's name, a back navigation button, and an optional encryption status indicator.
+ * The main content includes a scrollable list of chat messages and a message input bar for composing and sending messages.
+ * Loading and error states are presented as overlays when applicable.
+ *
+ * @param contactId The unique identifier of the contact whose chat is displayed. If null, defaults to the current chat context.
+ * @param onNavigateBack Callback invoked when the back navigation icon is pressed.
+ * @param modifier Modifier for styling the chat screen.
+ */
 @Composable
 fun ChatScreen(
     contactId: UUID? = null,
@@ -133,7 +144,13 @@ fun ChatScreen(
     }
 }
 
-// MessageInput component remains unchanged
+/**
+ * Displays a message input field with a send button for composing and sending chat messages.
+ *
+ * @param text The current message text.
+ * @param onTextChange Callback invoked when the input text changes.
+ * @param onSendClick Callback invoked when the send button is clicked.
+ */
 @Composable
 private fun MessageInput(
     text: String,

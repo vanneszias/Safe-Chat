@@ -33,6 +33,15 @@ import java.util.*
  * @param onContactClicked Callback when this contact is clicked
  * @param modifier Optional modifier for styling
  */
+/**
+ * Displays a contact item row with avatar, status indicator, name, status text, and last seen time.
+ *
+ * The row is clickable and invokes the provided callback with the contact when selected. If the contact has an avatar URL, it is intended to display the avatar image (currently a placeholder icon is shown). The contact's status is indicated by a colored dot overlaid on the avatar, and the last seen time is formatted for readability.
+ *
+ * @param contact The contact to display.
+ * @param onContactClicked Callback invoked when the contact row is clicked.
+ * @param modifier Optional modifier for styling or layout adjustments.
+ */
 @Composable
 fun ContactListItem(
     contact: Contact,
@@ -116,7 +125,10 @@ fun ContactListItem(
 }
 
 /**
- * Returns a color for the contact status indicator
+ * Maps a contact's status to its corresponding indicator color.
+ *
+ * @param status The contact's current status.
+ * @return The color representing the given status.
  */
 private fun getStatusColor(status: ContactStatus): Color {
     return when (status) {
@@ -127,7 +139,12 @@ private fun getStatusColor(status: ContactStatus): Color {
 }
 
 /**
- * Returns a text description of the contact status
+ * Returns the display label for a contact's status.
+ *
+ * Converts a ContactStatus value to its corresponding string: "Online", "Away", or "Offline".
+ *
+ * @param status The contact's current status.
+ * @return The status label as a string.
  */
 private fun getStatusText(status: ContactStatus): String {
     return when (status) {
@@ -138,7 +155,12 @@ private fun getStatusText(status: ContactStatus): String {
 }
 
 /**
- * Formats the last seen timestamp into a readable string
+ * Converts a timestamp to a human-readable string indicating how long ago the event occurred.
+ *
+ * Returns "Just now" for less than a minute ago, "X min ago" for less than an hour, the time of day for events within the last 24 hours, or a date string for older timestamps.
+ *
+ * @param timestamp The time in milliseconds since epoch to format.
+ * @return A formatted string representing the elapsed time since the given timestamp.
  */
 private fun formatLastSeen(timestamp: Long): String {
     val currentTime = System.currentTimeMillis()
@@ -162,6 +184,11 @@ private fun formatLastSeen(timestamp: Long): String {
     }
 }
 
+/**
+ * Displays a preview of the ContactListItem composable with sample contacts in different statuses.
+ *
+ * Shows three example contacts—online, away, and offline—demonstrating how the ContactListItem appears with varying names, statuses, and last seen times.
+ */
 @Preview(showBackground = true)
 @Composable
 fun ContactListItemPreview() {
