@@ -35,6 +35,13 @@ import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.PublicKey
 
+/**
+ * Displays the user profile screen with editable profile information and security key management.
+ *
+ * Shows the user's avatar, username (with edit capability), and a security section for viewing, copying, and regenerating the public key. Handles loading and error states with dialogs and snackbars. Allows toggling between view and edit modes, copying the public key to the clipboard, and generating a new key pair, which invalidates existing encrypted conversations.
+ *
+ * @param onNavigateBack Callback invoked when the user requests to navigate back.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -292,6 +299,9 @@ fun ProfileScreen(
     }
 }
 
+/**
+ * Displays a preview of the ProfileScreen composable with mock data and theming for design-time inspection.
+ */
 @Preview(showBackground = true)
 @Composable
 fun ProfileScreenPreview() {

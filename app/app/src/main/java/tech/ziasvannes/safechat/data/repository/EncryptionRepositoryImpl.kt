@@ -133,12 +133,12 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * Decrypts an AES-GCM encrypted message using the provided shared secret and initialization vector.
+     * Decrypts AES-GCM encrypted data using the provided shared secret and initialization vector.
      *
-     * @param encryptedContent The ciphertext to decrypt.
-     * @param iv The initialization vector used during encryption.
+     * @param encryptedContent The encrypted message bytes.
+     * @param iv The initialization vector used for encryption.
      * @param sharedSecret The shared secret key for decryption.
-     * @return The decrypted plaintext message as a string.
+     * @return The decrypted message as a UTF-8 string.
      */
     override suspend fun decryptMessage(
         encryptedContent: ByteArray,
@@ -151,9 +151,9 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * Gets the current public key as a Base64-encoded string.
+     * Retrieves the stored public key as a Base64-encoded string.
      *
-     * @return The current public key encoded as a Base64 string, or null if no key exists.
+     * @return The Base64-encoded public key, or null if the key is unavailable.
      */
     override suspend fun getCurrentPublicKey(): String? {
         return try {
@@ -165,9 +165,9 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * Generates a new key pair and returns the public key as a Base64-encoded string.
+     * Generates a new Diffie-Hellman key pair and returns the public key encoded as a Base64 string.
      *
-     * @return The newly generated public key encoded as a Base64 string.
+     * @return The Base64-encoded public key from the newly generated key pair.
      */
     override suspend fun generateNewKeyPair(): String {
         val keyPair = generateKeyPair()

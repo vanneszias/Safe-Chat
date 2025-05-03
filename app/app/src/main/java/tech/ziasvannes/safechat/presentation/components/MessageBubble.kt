@@ -28,6 +28,15 @@ import java.util.*
  * @param isFromCurrentUser Whether the message was sent by the current user
  * @param modifier Optional Modifier for styling
  */
+/**
+ * Displays a chat message bubble with styling and alignment based on the sender and message type.
+ *
+ * The bubble adapts its background color, text color, shape, and alignment depending on whether the message is from the current user. Supports rendering text, image (placeholder), and file messages, and shows a formatted timestamp below the bubble. If the message is from the current user, a status indicator is also displayed.
+ *
+ * @param message The message data to display.
+ * @param isFromCurrentUser Whether the message was sent by the current user.
+ * @param modifier Optional modifier for layout customization.
+ */
 @Composable
 fun MessageBubble(
     message: Message,
@@ -126,7 +135,10 @@ fun MessageBubble(
 }
 
 /**
- * Formats a timestamp into a readable time string
+ * Converts a timestamp in milliseconds to a formatted time string (e.g., "3:45 PM").
+ *
+ * @param timestamp The time in milliseconds since epoch.
+ * @return The formatted time string in the device's locale.
  */
 private fun formatMessageTime(timestamp: Long): String {
     val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())
@@ -134,7 +146,10 @@ private fun formatMessageTime(timestamp: Long): String {
 }
 
 /**
- * Formats a file size from bytes to a human-readable string
+ * Converts a file size in bytes to a human-readable string in B, KB, or MB.
+ *
+ * @param size The file size in bytes.
+ * @return The formatted file size as a string (e.g., "512 B", "2 KB", "1.5 MB").
  */
 private fun formatFileSize(size: Long): String {
     val kb = 1024
@@ -148,7 +163,10 @@ private fun formatFileSize(size: Long): String {
 }
 
 /**
- * Returns a string indicator based on message status
+ * Returns a user-friendly status string corresponding to the given message status.
+ *
+ * @param status The status of the message.
+ * @return A string representing the message's delivery state (e.g., "Sent", "Delivered").
  */
 private fun getStatusIndicator(status: MessageStatus): String {
     return when (status) {
@@ -161,7 +179,12 @@ private fun getStatusIndicator(status: MessageStatus): String {
 }
 
 /**
- * Returns a color based on message status
+ * Returns the color associated with a given message status.
+ *
+ * Maps each `MessageStatus` to a specific color for use in status indicators.
+ *
+ * @param status The message status to map.
+ * @return The color corresponding to the provided status.
  */
 private fun getStatusColor(status: MessageStatus): Color {
     return when (status) {
@@ -173,6 +196,11 @@ private fun getStatusColor(status: MessageStatus): Color {
     }
 }
 
+/**
+ * Displays a preview of the MessageBubble composable with sample sent, received, and file messages.
+ *
+ * Renders three example message bubbles inside a themed column to demonstrate different message types and sender alignments.
+ */
 @Preview(showBackground = true)
 @Composable
 fun MessageBubblePreview() {

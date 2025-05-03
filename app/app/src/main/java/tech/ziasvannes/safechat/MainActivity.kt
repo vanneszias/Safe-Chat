@@ -12,9 +12,9 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     /**
-     * Initializes the activity, sets up edge-to-edge display, and composes the main app UI using Jetpack Compose.
+     * Handles activity creation, enables edge-to-edge display, and sets the main app UI with Jetpack Compose.
      *
-     * @param savedInstanceState The previously saved instance state, or null if none exists.
+     * @param savedInstanceState The saved state of the activity, or null if none exists.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
