@@ -63,7 +63,10 @@ class ChatViewModel @Inject constructor(
                     _state.update { it.copy(messages = messages) }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(error = e.message ?: "Failed to load chat") }
+                // Log the detailed error for debugging
+                Log.e("ChatViewModel", "Error loading chat", e)
+                // Present a sanitized message to the user
+                _state.update { it.copy(error = "Failed to load chat. Please try again.") }
             } finally {
                 _state.update { it.copy(isLoading = false) }
             }
