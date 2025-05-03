@@ -9,5 +9,5 @@ data class ChatState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val messageText: String = "",
-    val isEncrypted: Boolean = false
+    val encryptionStatus: EncryptionStatus = EncryptionStatus.NOT_ENCRYPTED
 )
