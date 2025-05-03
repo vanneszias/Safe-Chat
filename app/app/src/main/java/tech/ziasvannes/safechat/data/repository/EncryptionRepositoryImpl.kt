@@ -21,6 +21,14 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     private val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
     private val KEY_ALIAS = "SafeChatKeyPair"
 
+    /**
+     * Retrieves Diffie-Hellman (DH) parameters for key generation.
+     *
+     * Attempts to generate secure 2048-bit DH parameters dynamically. If generation fails,
+     * falls back to using the standardized 2048-bit MODP Group (RFC 3526 Group 14).
+     *
+     * @return A DHParameterSpec containing the prime modulus and generator for DH key exchange.
+     */
     private fun getDHParameters(): DHParameterSpec {
         // Use NIST's standardized 2048-bit DH parameters (SP 800-56A)
         return try {
@@ -37,6 +45,11 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
         }
     }
 
+    /**
+     * Generates a Diffie-Hellman key pair and stores it securely in the AndroidKeyStore.
+     *
+     * @return The generated DH key pair.
+     */
     override suspend fun generateKeyPair(): KeyPair {
         val keyPairGenerator = KeyPairGenerator.getInstance(
             "DH",
@@ -56,20 +69,39 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
         return keyPairGenerator.generateKeyPair()
     }
 
+    /**
+     * No-op for storing key pairs, as keys generated in AndroidKeyStore are automatically persisted.
+     */
     override suspend fun storeKeyPair(keyPair: KeyPair) {
         // Keys are automatically stored in AndroidKeyStore when generated
     }
 
+    /**
+     * Retrieves the stored Diffie-Hellman public key from the AndroidKeyStore.
+     *
+     * @return The public key associated with the key alias.
+     */
     override suspend fun getPublicKey(): PublicKey {
         val entry = keyStore.getEntry(KEY_ALIAS, null) as KeyStore.PrivateKeyEntry
         return entry.certificate.publicKey
     }
 
+    /**
+     * Retrieves the Diffie-Hellman private key stored in the AndroidKeyStore.
+     *
+     * @return The stored private key associated with the predefined key alias.
+     */
     override suspend fun getPrivateKey(): PrivateKey {
         val entry = keyStore.getEntry(KEY_ALIAS, null) as KeyStore.PrivateKeyEntry
         return entry.privateKey
     }
 
+    /**
+     * Computes a shared secret using the Diffie-Hellman key agreement protocol with the stored private key and a provided public key.
+     *
+     * @param publicKey The public key from the other party in the key exchange.
+     * @return The computed shared secret as a byte array.
+     */
     override suspend fun computeSharedSecret(publicKey: PublicKey): ByteArray {
         val privateKey = getPrivateKey()
         val keyAgreement = KeyAgreement.getInstance("DH")
@@ -78,6 +110,15 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
         return keyAgreement.generateSecret()
     }
 
+    /**
+     * Encrypts a plaintext message using AES-GCM with the provided shared secret.
+     *
+     * Generates a random 12-byte initialization vector (IV), encrypts the message using AES-GCM with the shared secret as the key, and returns a pair containing the encrypted bytes and the IV.
+     *
+     * @param message The plaintext message to encrypt.
+     * @param sharedSecret The shared secret key used for AES-GCM encryption.
+     * @return A pair consisting of the encrypted message bytes and the IV used for encryption.
+     */
     override suspend fun encryptMessage(
         message: String,
         sharedSecret: ByteArray
@@ -90,6 +131,14 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
         return Pair(encryptedBytes, iv)
     }
 
+    /**
+     * Decrypts an AES-GCM encrypted message using the provided shared secret and initialization vector.
+     *
+     * @param encryptedContent The ciphertext to decrypt.
+     * @param iv The initialization vector used during encryption.
+     * @param sharedSecret The shared secret key for decryption.
+     * @return The decrypted plaintext message as a string.
+     */
     override suspend fun decryptMessage(
         encryptedContent: ByteArray,
         iv: ByteArray,

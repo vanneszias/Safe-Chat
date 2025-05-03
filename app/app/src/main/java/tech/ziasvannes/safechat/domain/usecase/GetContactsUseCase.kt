@@ -8,6 +8,13 @@ import javax.inject.Inject
 class GetContactsUseCase @Inject constructor(
     private val contactRepository: ContactRepository
 ) {
-    suspend operator fun invoke(): Flow<List<Contact>> =
+    /**
+         * Returns a flow emitting updates to the list of contacts.
+         *
+         * Retrieves the current list of contacts as a reactive stream, emitting new lists whenever the underlying data changes.
+         *
+         * @return A [Flow] that emits lists of [Contact] objects.
+         */
+        suspend operator fun invoke(): Flow<List<Contact>> =
         contactRepository.getContacts()
 }

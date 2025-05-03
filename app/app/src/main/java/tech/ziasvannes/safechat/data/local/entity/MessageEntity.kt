@@ -20,6 +20,13 @@ data class MessageEntity(
     val encryptedContent: ByteArray,
     val iv: ByteArray
 ) {
+    /**
+     * Converts this MessageEntity to a domain Message object.
+     *
+     * Transforms string-based IDs to UUIDs and copies all other fields directly.
+     *
+     * @return A Message instance representing the same data as this entity.
+     */
     fun toMessage(): Message = Message(
         id = UUID.fromString(id),
         content = content,
@@ -33,6 +40,14 @@ data class MessageEntity(
     )
 
     companion object {
+        /**
+         * Creates a [MessageEntity] from a [Message] domain model.
+         *
+         * Converts UUID fields in the [Message] to string representations and copies all other properties directly.
+         *
+         * @param message The domain model message to convert.
+         * @return A [MessageEntity] representing the given [Message] for database storage.
+         */
         fun fromMessage(message: Message): MessageEntity = MessageEntity(
             id = message.id.toString(),
             content = message.content,
@@ -46,6 +61,13 @@ data class MessageEntity(
         )
     }
 
+    /**
+     * Checks if this `MessageEntity` is equal to another object based on the `id` property.
+     *
+     * Returns true if the other object is a `MessageEntity` with the same `id`, or if both references point to the same instance.
+     *
+     * @return `true` if the objects are considered equal, `false` otherwise.
+     */
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -54,6 +76,13 @@ data class MessageEntity(
         return id == other.id
     }
 
+    /**
+     * Returns the hash code value for this entity, based solely on its unique ID.
+     *
+     * Entities with the same ID will have the same hash code.
+     *
+     * @return The hash code of the ID property.
+     */
     override fun hashCode(): Int {
         return id.hashCode()
     }

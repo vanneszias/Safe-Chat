@@ -14,6 +14,16 @@ class SendMessageUseCase @Inject constructor(
     private val encryptionRepository: EncryptionRepository,
     private val contactRepository: ContactRepository
 ) {
+    /**
+     * Sends an encrypted message to a specified recipient.
+     *
+     * Retrieves the recipient's contact information, computes a shared encryption secret using the recipient's public key, encrypts the message content, constructs a new message object, and sends it via the message repository. Returns the result of the send operation.
+     *
+     * @param content The plaintext content of the message to send.
+     * @param receiverId The UUID of the message recipient.
+     * @param type The type of message to send (defaults to text).
+     * @return A [Result] containing the sent [Message] on success, or an exception on failure.
+     */
     suspend operator fun invoke(
         content: String,
         receiverId: UUID,
