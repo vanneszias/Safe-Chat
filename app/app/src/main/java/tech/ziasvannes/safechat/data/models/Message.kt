@@ -18,11 +18,17 @@ data class Message(
         if (javaClass != other?.javaClass) return false
 
         other as Message
-        return id == other.id
+        if (id != other.id) return false
+        if (!encryptedContent.contentEquals(other.encryptedContent)) return false
+        if (!iv.contentEquals(other.iv)) return false
+        return true
     }
 
     override fun hashCode(): Int {
-        return id.hashCode()
+        var result = id.hashCode()
+        result = 31 * result + encryptedContent.contentHashCode()
+        result = 31 * result + iv.contentHashCode()
+        return result
     }
 }
 
