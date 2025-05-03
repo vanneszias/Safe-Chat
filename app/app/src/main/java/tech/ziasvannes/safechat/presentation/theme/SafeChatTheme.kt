@@ -173,7 +173,12 @@ val SafeChatShapes = Shapes(
     large = RoundedCornerShape(12.dp)
 )
 
-// Main theme composable that applies the appropriate theme based on system settings
+/**
+ * Applies the SafeChat app theme to its content, selecting colors, typography, and shapes based on the dark mode setting.
+ *
+ * @param darkTheme If true, uses the dark color scheme; otherwise, uses the light color scheme. Defaults to the system setting.
+ * @param content The composable content to which the theme will be applied.
+ */
 @Composable
 fun SafeChatTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

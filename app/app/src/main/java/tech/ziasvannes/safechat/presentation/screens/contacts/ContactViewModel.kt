@@ -30,6 +30,14 @@ open class ContactViewModel @Inject constructor(
         onEvent(ContactEvent.LoadContacts)
     }
 
+    /**
+     * Handles contact-related events and updates the ViewModel state accordingly.
+     *
+     * Processes events such as loading contacts, updating the search query, deleting contacts, and clearing errors.
+     * Navigation-related events are acknowledged but not handled within this method.
+     *
+     * @param event The contact event to process.
+     */
     open fun onEvent(event: ContactEvent) {
         when (event) {
             is ContactEvent.LoadContacts -> {
@@ -53,6 +61,12 @@ open class ContactViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Loads the list of contacts and updates the state with the results.
+     *
+     * Initiates contact retrieval, sets the loading state, and updates the state with the full and filtered contact lists.
+     * If an error occurs during loading, updates the state with an error message.
+     */
     private fun loadContacts() {
         _state.update { it.copy(isLoading = true) }
         
@@ -96,6 +110,13 @@ open class ContactViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Updates the search query in the state and filters the contacts list based on the query.
+     *
+     * If the query is blank, all contacts are included in the filtered list; otherwise, only contacts whose names contain the query (case-insensitive) are included.
+     *
+     * @param query The new search query string to apply.
+     */
     private fun updateSearchQuery(query: String) {
         _state.update { currentState ->
             val filteredList = if (query.isBlank()) {
@@ -113,6 +134,11 @@ open class ContactViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Attempts to delete a contact by its unique identifier and updates the state with an error message if deletion fails.
+     *
+     * @param contactId The UUID of the contact to be deleted.
+     */
     private fun deleteContact(contactId: java.util.UUID) {
         viewModelScope.launch {
             try {

@@ -23,6 +23,15 @@ open class SettingsViewModel @Inject constructor(
         onEvent(SettingsEvent.LoadSettings)
     }
 
+    /**
+     * Handles settings-related events and updates the settings state accordingly.
+     *
+     * Processes events such as loading settings, toggling options, updating retention periods,
+     * clearing messages, resetting settings, and clearing errors. Triggers asynchronous operations
+     * for actions that require simulated data persistence or state reset.
+     *
+     * @param event The settings event to handle.
+     */
     open fun onEvent(event: SettingsEvent) {
         when (event) {
             is SettingsEvent.LoadSettings -> {
@@ -60,6 +69,12 @@ open class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Loads the current settings and updates the state with default values or an error message.
+     *
+     * Sets the loading flag while retrieving settings, then updates the state with default settings values.
+     * If an error occurs during loading, updates the state with an error message.
+     */
     private fun loadSettings() {
         _state.update { it.copy(isLoading = true) }
         
@@ -91,6 +106,11 @@ open class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Simulates saving the current settings asynchronously.
+     *
+     * If an error occurs during the simulated save, updates the state with an error message.
+     */
     private fun saveSettings() {
         viewModelScope.launch {
             try {
@@ -107,6 +127,11 @@ open class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Simulates clearing all stored messages and updates the loading state.
+     *
+     * If an error occurs during the operation, updates the state with an error message.
+     */
     private fun clearAllMessages() {
         _state.update { it.copy(isLoading = true) }
         
@@ -128,6 +153,11 @@ open class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Resets the settings state to default values, simulating a reset operation with a delay.
+     *
+     * Updates the state to indicate loading during the operation. If an error occurs, the state is updated with an error message.
+     */
     private fun resetSettings() {
         _state.update { it.copy(isLoading = true) }
         

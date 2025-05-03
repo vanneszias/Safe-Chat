@@ -24,6 +24,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/**
+ * Displays the main settings screen with configurable options grouped into sections.
+ *
+ * Presents appearance, notification, privacy, and about settings, allowing users to toggle features, view app information, and perform actions such as clearing messages or resetting settings. Handles user interactions, confirmation dialogs for destructive actions, loading and error feedback, and navigation.
+ *
+ * @param onNavigateBack Callback invoked when the user requests to navigate back from the settings screen.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -243,6 +250,12 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * Displays a titled section within the settings screen, wrapping the provided content in a card.
+ *
+ * @param title The header text for the section.
+ * @param content The composable content to display within the section.
+ */
 @Composable
 fun SettingsSection(
     title: String,
@@ -273,6 +286,14 @@ fun SettingsSection(
     }
 }
 
+/**
+ * Displays a clickable settings row with an icon, title, description, and a trailing icon.
+ *
+ * @param title The title text of the setting.
+ * @param description The description or summary of the setting.
+ * @param icon The icon displayed at the start of the row.
+ * @param onClick Callback invoked when the row is clicked.
+ */
 @Composable
 fun SettingItem(
     title: String,
@@ -326,6 +347,15 @@ fun SettingItem(
     Divider(color = MaterialTheme.colorScheme.surfaceVariant)
 }
 
+/**
+ * Displays a settings row with an icon, title, description, and a toggle switch.
+ *
+ * @param title The title of the setting.
+ * @param description A brief description of the setting.
+ * @param icon The icon representing the setting.
+ * @param checked Whether the switch is on or off.
+ * @param onCheckedChange Callback invoked when the switch state changes.
+ */
 @Composable
 fun SwitchSettingItem(
     title: String,
@@ -377,6 +407,11 @@ fun SwitchSettingItem(
     Divider(color = MaterialTheme.colorScheme.surfaceVariant)
 }
 
+/**
+ * Displays a preview of the Settings screen with sample state for design-time visualization.
+ *
+ * Renders the SettingsScreen composable using a fake ViewModel and preset settings values.
+ */
 @Preview(showBackground = true)
 @Composable
 fun SettingsScreenPreview() {
@@ -404,6 +439,11 @@ private class FakeSettingsViewModel(initialState: SettingsState) : SettingsViewM
     private val _state = MutableStateFlow(initialState)
     override val state: StateFlow<SettingsState> = _state.asStateFlow()
 
+    /**
+     * Handles settings events. No operation is performed in the preview implementation.
+     *
+     * @param event The settings event to handle.
+     */
     override fun onEvent(event: SettingsEvent) {
         // No-op for preview
     }

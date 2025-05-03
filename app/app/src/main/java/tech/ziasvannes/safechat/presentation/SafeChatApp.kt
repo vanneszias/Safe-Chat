@@ -24,6 +24,12 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  * Main container for the SafeChat application
  */
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Main composable function that sets up the SafeChat application's UI structure.
+ *
+ * Displays a scaffold with a conditional bottom navigation bar for navigating between Chats, Profile, and Settings screens.
+ * The bottom bar is hidden on chat detail and add contact screens. The main content area hosts the navigation graph.
+ */
 @Composable
 fun SafeChatApp() {
     val navController = rememberNavController()
@@ -113,6 +119,11 @@ data class BottomNavItem(
     val label: String
 )
 
+/**
+ * Displays a preview of the SafeChat application's main UI within the app theme.
+ *
+ * This composable is intended for use in design tools to visualize the SafeChatApp layout during development.
+ */
 @Preview(showBackground = true)
 @Composable
 fun SafeChatAppPreview() {

@@ -45,6 +45,28 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  * @param focusRequester Optional FocusRequester for programmatic focus management
  */
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Displays a customizable text input field with optional label, placeholder, icons, error state, and keyboard behavior.
+ *
+ * Supports single-line or multi-line input, animated error message display, visual transformations, and programmatic focus control.
+ *
+ * @param value The current text to display in the field.
+ * @param onValueChange Callback invoked when the text changes.
+ * @param label Optional label text shown above the field.
+ * @param placeholder Optional placeholder text shown when the field is empty.
+ * @param leadingIcon Optional composable displayed at the start of the field.
+ * @param trailingIcon Optional composable displayed at the end of the field.
+ * @param isError If true, displays the field and error message in an error state.
+ * @param errorMessage Optional error message shown below the field when `isError` is true and the message is not blank.
+ * @param keyboardOptions Keyboard configuration for input type and IME actions.
+ * @param keyboardActions Actions triggered by keyboard events.
+ * @param singleLine If true, restricts input to a single line.
+ * @param maxLines Maximum number of lines for input; defaults to unlimited unless `singleLine` is true.
+ * @param shape Shape of the text field's outline.
+ * @param colors Color scheme for the text field.
+ * @param visualTransformation Optional visual transformation for the input text (e.g., password masking).
+ * @param focusRequester Optional focus requester for programmatic focus control.
+ */
 @Composable
 fun CustomTextField(
     value: String,
@@ -108,13 +130,15 @@ fun CustomTextField(
 }
 
 /**
- * A specialized search text field with search icon and clear button.
+ * Displays a single-line search input field with a search icon and a clear button.
  *
- * @param value The current search text
- * @param onValueChange Callback invoked when the search text changes
- * @param modifier Optional Modifier for styling
- * @param placeholder Optional placeholder text
- * @param onSearch Callback invoked when the search action is triggered
+ * The field shows a search icon on the left and, when text is entered, a clear button on the right. Pressing the search action on the keyboard triggers the provided search callback.
+ *
+ * @param value The current text in the search field.
+ * @param onValueChange Called when the text input changes.
+ * @param modifier Modifier for styling and layout.
+ * @param placeholder Placeholder text shown when the field is empty.
+ * @param onSearch Called when the search action is triggered from the keyboard.
  */
 @Composable
 fun SearchTextField(
@@ -158,6 +182,11 @@ fun SearchTextField(
     )
 }
 
+/**
+ * Preview of the CustomTextField composable displaying a labeled text input with a placeholder.
+ *
+ * Shows how to use CustomTextField within a themed surface and padded box for UI demonstration purposes.
+ */
 @Preview(showBackground = true)
 @Composable
 fun CustomTextFieldPreview() {
@@ -178,6 +207,11 @@ fun CustomTextFieldPreview() {
     }
 }
 
+/**
+ * Displays a preview of the `SearchTextField` composable with a placeholder for searching contacts.
+ *
+ * This preview shows the search field inside a padded box using the app's theme.
+ */
 @Preview(showBackground = true)
 @Composable
 fun SearchTextFieldPreview() {
@@ -196,6 +230,11 @@ fun SearchTextFieldPreview() {
     }
 }
 
+/**
+ * Preview of the CustomTextField composable in an error state with an error message.
+ *
+ * Displays a text field labeled "Email" showing the error message "Invalid email address" for UI demonstration purposes.
+ */
 @Preview(showBackground = true)
 @Composable
 fun CustomTextFieldErrorPreview() {
