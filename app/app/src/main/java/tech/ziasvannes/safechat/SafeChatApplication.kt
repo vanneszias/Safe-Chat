@@ -1,35 +1,33 @@
 package tech.ziasvannes.safechat
 
 import android.app.Application
+import android.util.Log
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 import tech.ziasvannes.safechat.testing.TestInitializer
 import tech.ziasvannes.safechat.testing.TestMode
-import javax.inject.Inject
 
 @HiltAndroidApp
 class SafeChatApplication : Application() {
-    
-    @Inject
-    lateinit var testInitializer: TestInitializer
-    
+
+    @Inject lateinit var testInitializer: TestInitializer
+
     override fun onCreate() {
         super.onCreate()
-        
+
         // By default, enable test repositories for UI development
         // This can be toggled at runtime through the TestSettingsScreen
         TestMode.configure(
-            useTestRepositories = true,
-            simulateIncomingMessages = false,
-            simulateConnectionIssues = false
+                useTestRepositories = true,
+                simulateIncomingMessages = false,
+                simulateConnectionIssues = false
         )
-        
+
         // Initialize test components if needed
         initializeTestComponents()
     }
-    
-    /**
-     * Initializes test components for development and testing.
-     */
+
+    /** Initializes test components for development and testing. */
     private fun initializeTestComponents() {
         if (TestMode.useTestRepositories) {
             try {
