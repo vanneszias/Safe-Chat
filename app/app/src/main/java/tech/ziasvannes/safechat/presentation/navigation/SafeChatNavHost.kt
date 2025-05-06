@@ -11,6 +11,7 @@ import tech.ziasvannes.safechat.presentation.chat.ChatScreen
 import tech.ziasvannes.safechat.presentation.screens.contacts.ContactListScreen
 import tech.ziasvannes.safechat.presentation.screens.profile.ProfileScreen
 import tech.ziasvannes.safechat.presentation.screens.settings.SettingsScreen
+import tech.ziasvannes.safechat.presentation.screens.settings.TestSettingsScreen
 import java.util.UUID
 
 /**
@@ -85,6 +86,18 @@ fun SafeChatNavHost(
         // Settings screen
         composable(route = NavRoutes.SETTINGS) {
             SettingsScreen(
+                onNavigateBack = {
+                    navController.navigateUp()
+                },
+                onNavigateToTestSettings = {
+                    navController.navigate(NavRoutes.TEST_SETTINGS)
+                }
+            )
+        }
+        
+        // Test Settings screen
+        composable(route = NavRoutes.TEST_SETTINGS) {
+            TestSettingsScreen(
                 onNavigateBack = {
                     navController.navigateUp()
                 }

@@ -16,6 +16,7 @@ import tech.ziasvannes.safechat.data.repository.MessageRepositoryImpl
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -56,34 +57,37 @@ object DatabaseModule {
     fun provideMessageDao(database: SafeChatDatabase): MessageDao = database.messageDao()
     
     /**
-         * Provides a singleton instance of ContactRepository implemented by ContactRepositoryImpl.
-         *
-         * @param contactDao The DAO used for contact data operations.
-         * @return A ContactRepository for managing contact-related data.
-         */
-        @Provides
+     * Provides a singleton instance of the real ContactRepository implementation.
+     *
+     * @param contactDao The DAO used for contact data operations.
+     * @return A real ContactRepository for managing contact-related data.
+     */
+    @Provides
     @Singleton
+    @Named("real")
     fun provideContactRepository(contactDao: ContactDao): ContactRepository =
         ContactRepositoryImpl(contactDao)
     
     /**
-         * Provides a singleton instance of MessageRepository backed by MessageRepositoryImpl.
-         *
-         * @param messageDao The DAO used for message data access.
-         * @return A MessageRepository implementation for managing message data.
-         */
-        @Provides
+     * Provides a singleton instance of the real MessageRepository implementation.
+     *
+     * @param messageDao The DAO used for message data access.
+     * @return A real MessageRepository implementation for managing message data.
+     */
+    @Provides
     @Singleton
+    @Named("real")
     fun provideMessageRepository(messageDao: MessageDao): MessageRepository =
         MessageRepositoryImpl(messageDao)
         
     /**
-         * Provides a singleton instance of the encryption repository for handling encryption-related operations.
-         *
-         * @return An implementation of [EncryptionRepository].
-         */
-        @Provides
+     * Provides a singleton instance of the real encryption repository implementation.
+     *
+     * @return A real implementation of [EncryptionRepository].
+     */
+    @Provides
     @Singleton
+    @Named("real")
     fun provideEncryptionRepository(): EncryptionRepository =
         EncryptionRepositoryImpl()
 }
