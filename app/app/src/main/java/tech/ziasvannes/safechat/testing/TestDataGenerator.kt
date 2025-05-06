@@ -58,7 +58,12 @@ object TestDataGenerator {
         "Let me know when you're free to talk"
     )
 
-    // Generate a list of sample contacts
+    /**
+     * Generates a list of sample contacts with randomized names, IDs, public keys, last seen timestamps, statuses, and avatar URLs.
+     *
+     * @param count The number of contacts to generate. Defaults to 15.
+     * @return A list of generated Contact objects for testing purposes.
+     */
     fun generateContacts(count: Int = 15): List<Contact> {
         val contacts = mutableListOf<Contact>()
         
@@ -81,7 +86,17 @@ object TestDataGenerator {
         return contacts
     }
     
-    // Generate random messages for a chat session
+    /**
+     * Generates a list of randomized messages for a chat session between the current user and a contact.
+     *
+     * Each message alternates between being sent by the current user and the contact, with randomized message statuses and types (text, image, or file). Message content is selected from predefined snippets, and timestamps are incremented to simulate a realistic conversation flow. All messages use dummy encrypted content and IVs for testing purposes.
+     *
+     * @param chatSessionId The unique identifier of the chat session.
+     * @param currentUserId The unique identifier of the current user.
+     * @param contactId The unique identifier of the contact.
+     * @param count The number of messages to generate (default is 20).
+     * @return A list of generated messages sorted by timestamp.
+     */
     fun generateMessages(
         chatSessionId: UUID,
         currentUserId: UUID,
@@ -149,7 +164,16 @@ object TestDataGenerator {
         return messages.sortedBy { it.timestamp }
     }
     
-    // Generate chat sessions from contacts
+    /**
+     * Generates a list of chat sessions for the current user with the provided contacts.
+     *
+     * For each contact, creates a chat session containing a random number of messages, assigns a random encryption status,
+     * and sets the unread message count to zero or a small random value. The last message in each session is determined by the latest timestamp.
+     *
+     * @param currentUserId The UUID of the current user.
+     * @param contacts The list of contacts to generate chat sessions with.
+     * @return A list of generated chat sessions, each with randomized messages and attributes.
+     */
     fun generateChatSessions(
         currentUserId: UUID,
         contacts: List<Contact>

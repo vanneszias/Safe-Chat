@@ -24,7 +24,9 @@ import javax.inject.Singleton
 object TestDataModule {
     
     /**
-     * Provides a fake contact repository filled with test data.
+     * Supplies a singleton instance of a fake contact repository populated with test data for testing and UI development.
+     *
+     * @return A `ContactRepository` implementation containing sample contacts.
      */
     @Provides
     @Singleton
@@ -32,7 +34,10 @@ object TestDataModule {
     fun provideFakeContactRepository(): ContactRepository = FakeContactRepository()
     
     /**
-     * Provides a fake message repository with generated test messages and chat sessions.
+     * Supplies a singleton instance of a fake message repository for testing, using the provided fake contact repository to generate test messages and chat sessions.
+     *
+     * @param contactRepository The fake contact repository used to generate related test data.
+     * @return A fake message repository containing test messages and chat sessions.
      */
     @Provides
     @Singleton
@@ -42,7 +47,9 @@ object TestDataModule {
     ): MessageRepository = FakeMessageRepository(contactRepository)
     
     /**
-     * Provides a fake encryption repository for testing.
+     * Supplies a singleton instance of a fake encryption repository for testing purposes.
+     *
+     * @return An instance of FakeEncryptionRepository used as EncryptionRepository for test scenarios.
      */
     @Provides
     @Singleton

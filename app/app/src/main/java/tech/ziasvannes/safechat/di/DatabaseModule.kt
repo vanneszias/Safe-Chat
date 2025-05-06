@@ -48,20 +48,19 @@ object DatabaseModule {
     fun provideContactDao(database: SafeChatDatabase): ContactDao = database.contactDao()
     
     /**
-     * Provides the MessageDao instance from the SafeChatDatabase.
+     * Provides the MessageDao for accessing message data in the SafeChat database.
      *
-     * @param database The Room database instance for SafeChat.
-     * @return The MessageDao for accessing message-related database operations.
+     * @param database The SafeChatDatabase instance from which to obtain the DAO.
+     * @return The MessageDao used for message-related database operations.
      */
     @Provides
     fun provideMessageDao(database: SafeChatDatabase): MessageDao = database.messageDao()
     
     /**
-     * Provides a singleton instance of the real ContactRepository implementation.
-     *
-     * @param contactDao The DAO used for contact data operations.
-     * @return A real ContactRepository for managing contact-related data.
-     */
+         * Provides the singleton "real" implementation of ContactRepository for dependency injection.
+         *
+         * @return The ContactRepository implementation that manages contact data using the provided ContactDao.
+         */
     @Provides
     @Singleton
     @Named("real")
@@ -69,11 +68,10 @@ object DatabaseModule {
         ContactRepositoryImpl(contactDao)
     
     /**
-     * Provides a singleton instance of the real MessageRepository implementation.
-     *
-     * @param messageDao The DAO used for message data access.
-     * @return A real MessageRepository implementation for managing message data.
-     */
+         * Provides the singleton "real" implementation of MessageRepository for message data management.
+         *
+         * @return The MessageRepository implementation backed by the provided MessageDao.
+         */
     @Provides
     @Singleton
     @Named("real")
@@ -81,10 +79,10 @@ object DatabaseModule {
         MessageRepositoryImpl(messageDao)
         
     /**
-     * Provides a singleton instance of the real encryption repository implementation.
-     *
-     * @return A real implementation of [EncryptionRepository].
-     */
+         * Provides the singleton "real" implementation of [EncryptionRepository].
+         *
+         * @return The real [EncryptionRepository] instance.
+         */
     @Provides
     @Singleton
     @Named("real")

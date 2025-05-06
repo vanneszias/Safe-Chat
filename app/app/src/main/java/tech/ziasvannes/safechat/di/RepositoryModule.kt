@@ -22,7 +22,11 @@ import javax.inject.Singleton
 object RepositoryModule {
 
     /**
-     * Provides the appropriate ContactRepository implementation.
+     * Returns either the real or test implementation of ContactRepository based on the current test mode.
+     *
+     * If `TestMode.useTestRepositories` is true, the test repository is provided; otherwise, the real repository is used.
+     *
+     * @return The selected ContactRepository implementation.
      */
     @Provides
     @Singleton
@@ -34,7 +38,11 @@ object RepositoryModule {
     }
 
     /**
-     * Provides the appropriate MessageRepository implementation.
+     * Returns either the real or test implementation of MessageRepository based on the current test mode.
+     *
+     * If `TestMode.useTestRepositories` is true, the test repository is provided; otherwise, the real repository is used.
+     *
+     * @return The selected MessageRepository implementation.
      */
     @Provides
     @Singleton
@@ -46,7 +54,11 @@ object RepositoryModule {
     }
 
     /**
-     * Provides the appropriate EncryptionRepository implementation.
+     * Returns the EncryptionRepository implementation based on the current test mode.
+     *
+     * Selects the test or real EncryptionRepository depending on whether test repositories are enabled.
+     *
+     * @return The selected EncryptionRepository implementation.
      */
     @Provides
     @Singleton

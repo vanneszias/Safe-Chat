@@ -22,7 +22,9 @@ class TestInitializer @Inject constructor(
     private var messageSimulator: TestMessageSimulator? = null
     
     /**
-     * Initializes all test components based on the current TestMode settings.
+     * Sets up test components for the application if test repositories are enabled.
+     *
+     * Creates and initializes a test message simulator when running in test mode, ensuring its state reflects current test settings.
      */
     fun initialize() {
         Log.d(TAG, "Initializing test components, useTestRepositories=${TestMode.useTestRepositories}")
@@ -41,7 +43,9 @@ class TestInitializer @Inject constructor(
     }
     
     /**
-     * Updates the test component state when test settings change.
+     * Refreshes the test message simulator's state to reflect current test settings.
+     *
+     * Invokes an update on the simulator if it has been initialized, ensuring simulation behavior matches the latest configuration.
      */
     fun updateTestState() {
         messageSimulator?.updateSimulationState()
