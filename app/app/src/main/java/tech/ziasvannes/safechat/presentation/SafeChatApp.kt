@@ -99,15 +99,14 @@ fun SafeChatApp() {
                 }
             }
         }
-    ) { innerPadding ->
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-        ) {
+                .padding(it)
+        )
             SafeChatNavHost(navController = navController)
         }
-    }
 }
 
 /**
