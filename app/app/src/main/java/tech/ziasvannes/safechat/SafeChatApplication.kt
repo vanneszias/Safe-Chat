@@ -2,6 +2,7 @@ package tech.ziasvannes.safechat
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
+import android.util.Log
 import tech.ziasvannes.safechat.testing.TestInitializer
 import tech.ziasvannes.safechat.testing.TestMode
 import javax.inject.Inject
