@@ -32,7 +32,13 @@ class SafeChatApplication : Application() {
      */
     private fun initializeTestComponents() {
         if (TestMode.useTestRepositories) {
-            testInitializer.initialize()
+            try {
+                testInitializer.initialize()
+            } catch (e: Exception) {
+                Log.e("SafeChatApplication", "Failed to initialize test components", e)
+                // Optionally disable test mode on failure
+                // TestMode.configure(useTestRepositories = false, ...)
+            }
         }
     }
 }
