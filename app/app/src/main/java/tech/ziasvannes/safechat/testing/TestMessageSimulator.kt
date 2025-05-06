@@ -60,7 +60,9 @@ class TestMessageSimulator @Inject constructor(
     }
 
     /**
-     * Starts the message simulation when the app is in the foreground.
+     * Initiates message simulation when the app enters the foreground, if test mode and message simulation are enabled.
+     *
+     * @param owner The lifecycle owner triggering the start event.
      */
     override fun onStart(owner: LifecycleOwner) {
         if (TestMode.useTestRepositories && TestMode.simulateIncomingMessages) {
@@ -69,14 +71,18 @@ class TestMessageSimulator @Inject constructor(
     }
 
     /**
-     * Stops the message simulation when the app goes to the background.
+     * Stops message simulation when the application moves to the background.
+     *
+     * Called automatically as part of the app's lifecycle.
      */
     override fun onStop(owner: LifecycleOwner) {
         stopSimulation()
     }
 
     /**
-     * Starts or stops the message simulation based on the current test mode settings.
+     * Enables or disables simulated incoming messages according to current test mode flags.
+     *
+     * Starts the simulation if both test repositories and message simulation are enabled; otherwise, stops any ongoing simulation.
      */
     fun updateSimulationState() {
         if (TestMode.useTestRepositories && TestMode.simulateIncomingMessages) {
@@ -89,7 +95,9 @@ class TestMessageSimulator @Inject constructor(
     }
 
     /**
-     * Starts periodically simulating random incoming messages.
+     * Begins a background coroutine that periodically simulates incoming messages from random contacts for UI testing.
+     *
+     * Cancels any existing simulation before starting. The simulation continues while test mode flags are enabled, sending random messages from a predefined template to random contacts at random intervals between 30 seconds and 2 minutes. Only operates if the message repository is a `FakeMessageRepository`. Exceptions during simulation are caught and logged.
      */
     private fun startSimulation() {
         // Stop any existing simulation
@@ -132,7 +140,7 @@ class TestMessageSimulator @Inject constructor(
     }
 
     /**
-     * Stops the message simulation.
+     * Cancels any ongoing message simulation and resets the simulation job.
      */
     private fun stopSimulation() {
         simulationJob?.cancel()
@@ -141,7 +149,11 @@ class TestMessageSimulator @Inject constructor(
     }
 
     /**
-     * Gets a list of contacts from the repository.
+     * Retrieves the list of contacts from the repository if it is a `FakeContactRepository`.
+     *
+     * Uses reflection to access the private contacts field in the fake repository. Returns an empty list if the repository is not a `FakeContactRepository` or if an error occurs.
+     *
+     * @return A list of contacts available for simulation, or an empty list if unavailable.
      */
     private suspend fun getContacts(): List<tech.ziasvannes.safechat.data.models.Contact> {
         return try {

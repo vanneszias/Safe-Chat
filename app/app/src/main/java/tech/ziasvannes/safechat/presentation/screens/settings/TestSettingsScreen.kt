@@ -28,6 +28,11 @@ import tech.ziasvannes.safechat.testing.TestMode
  * This screen provides UI controls to toggle between real and test repositories,
  * enable simulation of incoming messages, and other test features.
  */
+/**
+ * Displays a screen for configuring test mode settings in the Safe Chat app.
+ *
+ * Provides toggle controls for enabling test repositories, simulating incoming messages, and simulating connection issues. Changes update the shared test mode state and may require restarting parts of the app to take effect.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TestSettingsScreen(
@@ -115,6 +120,17 @@ fun TestSettingsScreen(
     }
 }
 
+/**
+ * Displays a labeled toggle switch with a title and description.
+ *
+ * Arranges the title and switch horizontally, with the description below. The toggle can be enabled or disabled, and the description's text color adjusts based on the enabled state.
+ *
+ * @param title The title displayed next to the toggle switch.
+ * @param description Additional information shown below the toggle.
+ * @param checked Whether the toggle is currently on or off.
+ * @param onCheckedChange Callback invoked when the toggle state changes.
+ * @param enabled Whether the toggle is interactive.
+ */
 @Composable
 private fun SettingToggle(
     title: String,

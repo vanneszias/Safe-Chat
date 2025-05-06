@@ -23,12 +23,16 @@ class FakeContactRepository @Inject constructor() : ContactRepository {
     private val contactsFlow = MutableStateFlow(contacts.toList())
     
     /**
-     * Returns a flow emitting the current list of all contacts.
-     */
+ * Returns a flow that emits the current list of all contacts and updates whenever the contact list changes.
+ *
+ * @return A [Flow] emitting snapshots of the contact list.
+ */
     override suspend fun getContacts(): Flow<List<Contact>> = contactsFlow
     
     /**
-     * Adds a new contact to the repository.
+     * Adds the specified contact to the in-memory repository and updates observers.
+     *
+     * @param contact The contact to add.
      */
     override suspend fun addContact(contact: Contact) {
         contacts.add(contact)
@@ -36,7 +40,9 @@ class FakeContactRepository @Inject constructor() : ContactRepository {
     }
     
     /**
-     * Updates the details of an existing contact.
+     * Replaces an existing contact with updated information if the contact exists.
+     *
+     * If a contact with the same ID as the provided contact is found, it is updated and observers are notified of the change.
      */
     override suspend fun updateContact(contact: Contact) {
         val index = contacts.indexOfFirst { it.id == contact.id }
@@ -47,7 +53,11 @@ class FakeContactRepository @Inject constructor() : ContactRepository {
     }
     
     /**
-     * Removes the contact with the specified UUID from the repository.
+     * Deletes the contact with the given UUID from the repository.
+     *
+     * If no contact with the specified ID exists, the repository remains unchanged.
+     *
+     * @param contactId The unique identifier of the contact to remove.
      */
     override suspend fun deleteContact(contactId: UUID) {
         contacts.removeIf { it.id == contactId }
@@ -55,14 +65,20 @@ class FakeContactRepository @Inject constructor() : ContactRepository {
     }
     
     /**
-     * Retrieves a contact by its unique identifier.
+     * Returns the contact with the specified UUID, or null if no such contact exists.
+     *
+     * @param id The unique identifier of the contact to retrieve.
+     * @return The matching contact, or null if not found.
      */
     override suspend fun getContactById(id: UUID): Contact? {
         return contacts.find { it.id == id }
     }
     
     /**
-     * Returns a flow emitting lists of contacts matching the search query.
+     * Returns a flow emitting lists of contacts whose names contain the given query string, case-insensitive.
+     *
+     * @param query The search string to match against contact names.
+     * @return A flow emitting filtered lists of contacts matching the query.
      */
     override suspend fun searchContacts(query: String): Flow<List<Contact>> {
         return contactsFlow.map { contactList ->
@@ -73,7 +89,9 @@ class FakeContactRepository @Inject constructor() : ContactRepository {
     }
     
     /**
-     * Updates the flow with the current list of contacts.
+     * Emits the latest snapshot of the contacts list to observers.
+     *
+     * Updates the contacts flow with a fresh copy of the current contacts, ensuring subscribers receive the most recent data.
      */
     private fun updateFlow() {
         contactsFlow.value = contacts.toList()

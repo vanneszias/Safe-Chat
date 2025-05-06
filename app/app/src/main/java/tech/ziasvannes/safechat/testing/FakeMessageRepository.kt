@@ -39,6 +39,12 @@ class FakeMessageRepository @Inject constructor(
         initializeTestData()
     }
     
+    /**
+     * Initializes test data for contacts, chat sessions, and messages.
+     *
+     * Populates the repository with generated contacts, chat sessions, and messages for testing purposes.
+     * Sets up message flows for each chat session and updates the chat sessions flow with the generated data.
+     */
     private fun initializeTestData() {
         // Get contacts - we'll do this synchronously for the fake implementation
         val contacts = runCatching {
@@ -73,7 +79,12 @@ class FakeMessageRepository @Inject constructor(
     }
 
     /**
-     * Returns a flow emitting lists of messages for the specified chat session.
+     * Returns a flow that emits the list of messages for the given chat session.
+     *
+     * If no flow exists for the specified session, it is created from the current in-memory messages.
+     *
+     * @param chatSessionId The UUID of the chat session whose messages are to be observed.
+     * @return A [Flow] emitting the list of messages for the specified chat session, ordered by timestamp.
      */
     override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> {
         // Create the flow if it doesn't exist
@@ -91,7 +102,11 @@ class FakeMessageRepository @Inject constructor(
     }
 
     /**
-     * Simulates sending a message and returns a success result with the message.
+     * Adds a new message to the in-memory store, updates relevant chat session metadata, and returns the sent message as a successful result.
+     *
+     * The message is appended to the appropriate chat session's message flow, the session's last message is updated, and the unread count is reset.
+     *
+     * @return A [Result] containing the sent [Message].
      */
     override suspend fun sendMessage(message: Message): Result<Message> {
         // Add message to appropriate lists
@@ -128,7 +143,10 @@ class FakeMessageRepository @Inject constructor(
     }
 
     /**
-     * Updates the status of a message identified by its UUID.
+     * Updates the status of a message with the specified UUID and propagates the change to all relevant message flows and chat sessions.
+     *
+     * @param messageId The UUID of the message to update.
+     * @param status The new status to assign to the message.
      */
     override suspend fun updateMessageStatus(messageId: UUID, status: MessageStatus) {
         // Find and update the message
@@ -163,7 +181,9 @@ class FakeMessageRepository @Inject constructor(
     }
 
     /**
-     * Deletes the message identified by the given UUID.
+     * Removes a message by its UUID from all internal collections and updates related chat sessions and message flows.
+     *
+     * If the deleted message was the last message in any chat session, updates the session's last message accordingly.
      */
     override suspend fun deleteMessage(messageId: UUID) {
         // Remove the message from all messages
@@ -199,13 +219,21 @@ class FakeMessageRepository @Inject constructor(
     }
 
     /**
-     * Returns a flow that emits lists of all chat sessions.
-     */
+ * Returns a flow emitting the current list of all chat sessions.
+ *
+ * The flow updates whenever chat sessions are added, removed, or modified.
+ *
+ * @return A [Flow] that emits the list of [ChatSession]s.
+ */
     override suspend fun getChatSessions(): Flow<List<ChatSession>> = chatSessionsFlow
 
     /**
-     * Manually simulate receiving a new message from a contact.
-     * This can be used to test the UI response to new incoming messages.
+     * Simulates the receipt of a new incoming message from the specified contact.
+     *
+     * Creates and adds a new message to the appropriate chat session, updates message and chat session flows, and increments the unread count for the session. Intended for testing UI behavior in response to incoming messages.
+     *
+     * @param contactId The UUID of the contact sending the simulated message.
+     * @param content The content of the simulated incoming message.
      */
     fun simulateIncomingMessage(contactId: UUID, content: String) {
         // Find the chat session for this contact

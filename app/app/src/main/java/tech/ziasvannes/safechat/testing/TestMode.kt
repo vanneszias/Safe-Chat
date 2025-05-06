@@ -28,7 +28,13 @@ object TestMode {
     var simulateConnectionIssues = false
 
     /**
-     * Set all test mode flags at once.
+     * Sets all test mode configuration flags for the application.
+     *
+     * Updates the flags controlling the use of test repositories, simulation of incoming messages, and simulation of connection issues. Each parameter defaults to the initial value of its corresponding flag.
+     *
+     * @param useTestRepositories If true, enables fake repositories with test data; if false, uses real backend repositories.
+     * @param simulateIncomingMessages If true, enables simulation of incoming messages (effective only when using test repositories).
+     * @param simulateConnectionIssues If true, enables simulation of connection issues (effective only when using test repositories).
      */
     fun configure(
         useTestRepositories: Boolean = true,
