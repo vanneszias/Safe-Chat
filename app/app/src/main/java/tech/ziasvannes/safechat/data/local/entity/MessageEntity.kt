@@ -2,23 +2,23 @@ package tech.ziasvannes.safechat.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.util.UUID
 import tech.ziasvannes.safechat.data.models.Message
 import tech.ziasvannes.safechat.data.models.MessageStatus
 import tech.ziasvannes.safechat.data.models.MessageType
-import java.util.UUID
 
 @Entity(tableName = "messages")
 data class MessageEntity(
-    @PrimaryKey
-    val id: String,
-    val content: String,
-    val timestamp: Long,
-    val senderId: String,
-    val receiverId: String,
-    val status: MessageStatus,
-    val type: MessageType,
-    val encryptedContent: ByteArray,
-    val iv: ByteArray
+        @PrimaryKey val id: String,
+        val content: String,
+        val timestamp: Long,
+        val senderId: String,
+        val receiverId: String,
+        val status: MessageStatus,
+        val type: MessageType,
+        val encryptedContent: ByteArray,
+        val iv: ByteArray,
+        val hmac: ByteArray
 ) {
     /**
      * Converts this MessageEntity to a domain Message object.
@@ -27,44 +27,50 @@ data class MessageEntity(
      *
      * @return A Message instance representing the same data as this entity.
      */
-    fun toMessage(): Message = Message(
-        id = UUID.fromString(id),
-        content = content,
-        timestamp = timestamp,
-        senderId = UUID.fromString(senderId),
-        receiverId = UUID.fromString(receiverId),
-        status = status,
-        type = type,
-        encryptedContent = encryptedContent,
-        iv = iv
-    )
+    fun toMessage(): Message =
+            Message(
+                    id = UUID.fromString(id),
+                    content = content,
+                    timestamp = timestamp,
+                    senderId = UUID.fromString(senderId),
+                    receiverId = UUID.fromString(receiverId),
+                    status = status,
+                    type = type,
+                    encryptedContent = encryptedContent,
+                    iv = iv,
+                    hmac = hmac
+            )
 
     companion object {
         /**
          * Creates a [MessageEntity] from a [Message] domain model.
          *
-         * Converts UUID fields in the [Message] to string representations and copies all other properties directly.
+         * Converts UUID fields in the [Message] to string representations and copies all other
+         * properties directly.
          *
          * @param message The domain model message to convert.
          * @return A [MessageEntity] representing the given [Message] for database storage.
          */
-        fun fromMessage(message: Message): MessageEntity = MessageEntity(
-            id = message.id.toString(),
-            content = message.content,
-            timestamp = message.timestamp,
-            senderId = message.senderId.toString(),
-            receiverId = message.receiverId.toString(),
-            status = message.status,
-            type = message.type,
-            encryptedContent = message.encryptedContent,
-            iv = message.iv
-        )
+        fun fromMessage(message: Message): MessageEntity =
+                MessageEntity(
+                        id = message.id.toString(),
+                        content = message.content,
+                        timestamp = message.timestamp,
+                        senderId = message.senderId.toString(),
+                        receiverId = message.receiverId.toString(),
+                        status = message.status,
+                        type = message.type,
+                        encryptedContent = message.encryptedContent,
+                        iv = message.iv,
+                        hmac = message.hmac
+                )
     }
 
     /**
      * Checks if this `MessageEntity` is equal to another object based on the `id` property.
      *
-     * Returns true if the other object is a `MessageEntity` with the same `id`, or if both references point to the same instance.
+     * Returns true if the other object is a `MessageEntity` with the same `id`, or if both
+     * references point to the same instance.
      *
      * @return `true` if the objects are considered equal, `false` otherwise.
      */

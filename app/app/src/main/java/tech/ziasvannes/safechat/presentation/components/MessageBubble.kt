@@ -216,7 +216,8 @@ fun MessageBubblePreview() {
                 status = MessageStatus.READ,
                 type = MessageType.Text,
                 encryptedContent = ByteArray(0),
-                iv = ByteArray(0)
+                iv = ByteArray(0),
+                hmac = ByteArray(16) { it.toByte() }
             )
             MessageBubble(message = sentMessage, isFromCurrentUser = true)
             
@@ -230,7 +231,8 @@ fun MessageBubblePreview() {
                 status = MessageStatus.DELIVERED,
                 type = MessageType.Text,
                 encryptedContent = ByteArray(0),
-                iv = ByteArray(0)
+                iv = ByteArray(0),
+                hmac = ByteArray(16) { it.toByte() }
             )
             MessageBubble(message = receivedMessage, isFromCurrentUser = false)
             
@@ -244,7 +246,8 @@ fun MessageBubblePreview() {
                 status = MessageStatus.SENT,
                 type = MessageType.File("", "Document.pdf", 1024 * 1024 * 2),
                 encryptedContent = ByteArray(0),
-                iv = ByteArray(0)
+                iv = ByteArray(0),
+                hmac = ByteArray(16) { it.toByte() }
             )
             MessageBubble(message = fileMessage, isFromCurrentUser = true)
         }

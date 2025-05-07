@@ -4,19 +4,20 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import com.google.crypto.tink.subtle.AesGcmJce
-import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
+import com.google.crypto.tink.subtle.Hkdf
 import java.math.BigInteger
-import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
 import java.security.PublicKey
-import java.security.spec.X509EncodedKeySpec
 import javax.crypto.KeyAgreement
+import javax.crypto.Mac
 import javax.crypto.interfaces.DHPublicKey
 import javax.crypto.spec.DHParameterSpec
+import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
+import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 
 class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     private val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
@@ -25,8 +26,8 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     /**
      * Retrieves Diffie-Hellman (DH) parameters for key generation.
      *
-     * Attempts to generate secure 2048-bit DH parameters dynamically. If generation fails,
-     * falls back to using the standardized 2048-bit MODP Group (RFC 3526 Group 14).
+     * Attempts to generate secure 2048-bit DH parameters dynamically. If generation fails, falls
+     * back to using the standardized 2048-bit MODP Group (RFC 3526 Group 14).
      *
      * @return A DHParameterSpec containing the prime modulus and generator for DH key exchange.
      */
@@ -40,8 +41,11 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
         } catch (e: Exception) {
             // Fallback to RFC 3526 Group 14 (2048-bit MODP Group) if generation fails
             DHParameterSpec(
-                BigInteger("FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AAAC42DAD33170D04507A33A85521ABDF1CBA64ECFB850458DBEF0A8AEA71575D060C7DB3970F85A6E1E4C7ABF5AE8CDB0933D71E8C94E04A25619DCEE3D2261AD2EE6BF12FFA06D98A0864D87602733EC86A64521F2B18177B200CBBE117577A615D6C770988C0BAD946E208E24FA074E5AB3143DB5BFCE0FD108E4B82D120A93AD2CAFFFFFFFFFFFFFFFF", 16),
-                BigInteger("2")
+                    BigInteger(
+                            "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AAAC42DAD33170D04507A33A85521ABDF1CBA64ECFB850458DBEF0A8AEA71575D060C7DB3970F85A6E1E4C7ABF5AE8CDB0933D71E8C94E04A25619DCEE3D2261AD2EE6BF12FFA06D98A0864D87602733EC86A64521F2B18177B200CBBE117577A615D6C770988C0BAD946E208E24FA074E5AB3143DB5BFCE0FD108E4B82D120A93AD2CAFFFFFFFFFFFFFFFF",
+                            16
+                    ),
+                    BigInteger("2")
             )
         }
     }
@@ -52,26 +56,27 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
      * @return The generated DH key pair.
      */
     override suspend fun generateKeyPair(): KeyPair {
-        val keyPairGenerator = KeyPairGenerator.getInstance(
-            "DH",
-            "AndroidKeyStore"
-        )
+        val keyPairGenerator = KeyPairGenerator.getInstance("DH", "AndroidKeyStore")
 
-        val parameterSpec = KeyGenParameterSpec.Builder(
-            KEY_ALIAS,
-            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-        ).apply {
-            setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
-            setAlgorithmParameterSpec(getDHParameters())
-            setKeySize(2048)
-        }.build()
+        val parameterSpec =
+                KeyGenParameterSpec.Builder(
+                                KEY_ALIAS,
+                                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+                        )
+                        .apply {
+                            setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
+                            setAlgorithmParameterSpec(getDHParameters())
+                            setKeySize(2048)
+                        }
+                        .build()
 
         keyPairGenerator.initialize(parameterSpec)
         return keyPairGenerator.generateKeyPair()
     }
 
     /**
-     * No-op for storing key pairs, as keys generated in AndroidKeyStore are automatically persisted.
+     * No-op for storing key pairs, as keys generated in AndroidKeyStore are automatically
+     * persisted.
      */
     override suspend fun storeKeyPair(keyPair: KeyPair) {
         // Keys are automatically stored in AndroidKeyStore when generated
@@ -98,7 +103,8 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * Computes a shared secret using the Diffie-Hellman key agreement protocol with the stored private key and a provided public key.
+     * Computes a shared secret using the Diffie-Hellman key agreement protocol with the stored
+     * private key and a provided public key.
      *
      * @param publicKey The public key from the other party in the key exchange.
      * @return The computed shared secret as a byte array.
@@ -111,25 +117,48 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
         return keyAgreement.generateSecret()
     }
 
+    private fun deriveKeys(sharedSecret: ByteArray): Pair<ByteArray, ByteArray> {
+        // Use HKDF to derive two keys: one for AES, one for HMAC
+        val salt = ByteArray(32) // Could be a static or random salt; for now, all zeros
+        val infoAes = "AES_KEY".toByteArray()
+        val infoHmac = "HMAC_KEY".toByteArray()
+        val aesKey =
+                Hkdf.computeHkdf("HmacSha256", sharedSecret, salt, infoAes, 32) // 256-bit AES key
+        val hmacKey =
+                Hkdf.computeHkdf("HmacSha256", sharedSecret, salt, infoHmac, 32) // 256-bit HMAC key
+        return Pair(aesKey, hmacKey)
+    }
+
     /**
      * Encrypts a plaintext message using AES-GCM with the provided shared secret.
      *
-     * Generates a random 12-byte initialization vector (IV), encrypts the message using AES-GCM with the shared secret as the key, and returns a pair containing the encrypted bytes and the IV.
+     * Generates a random 12-byte initialization vector (IV), encrypts the message using AES-GCM
+     * with the shared secret as the key, and returns a pair containing the encrypted bytes and the
+     * IV.
      *
      * @param message The plaintext message to encrypt.
      * @param sharedSecret The shared secret key used for AES-GCM encryption.
      * @return A pair consisting of the encrypted message bytes and the IV used for encryption.
      */
     override suspend fun encryptMessage(
-        message: String,
-        sharedSecret: ByteArray
-    ): Pair<ByteArray, ByteArray> {
-        val aesGcm = AesGcmJce(sharedSecret)
-        val iv = ByteArray(12).apply {
-            java.security.SecureRandom().nextBytes(this)
+            message: String,
+            sharedSecret: ByteArray
+    ): Triple<ByteArray, ByteArray, ByteArray> {
+        try {
+            val (aesKey, hmacKey) = deriveKeys(sharedSecret)
+            val aesGcm = AesGcmJce(aesKey)
+            val iv = ByteArray(12).apply { java.security.SecureRandom().nextBytes(this) }
+            val encryptedBytes = aesGcm.encrypt(message.toByteArray(), iv)
+            // HMAC over (encryptedBytes || iv)
+            val mac = Mac.getInstance("HmacSHA256")
+            mac.init(SecretKeySpec(hmacKey, "HmacSHA256"))
+            mac.update(encryptedBytes)
+            mac.update(iv)
+            val hmac = mac.doFinal()
+            return Triple(encryptedBytes, iv, hmac)
+        } catch (e: Exception) {
+            throw RuntimeException("Encryption failed: ${e.message}", e)
         }
-        val encryptedBytes = aesGcm.encrypt(message.toByteArray(), iv)
-        return Pair(encryptedBytes, iv)
     }
 
     /**
@@ -137,17 +166,35 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
      *
      * @param encryptedContent The encrypted message bytes.
      * @param iv The initialization vector used for encryption.
+     * @param hmac The HMAC of the encrypted content and iv.
      * @param sharedSecret The shared secret key for decryption.
      * @return The decrypted message as a UTF-8 string.
      */
     override suspend fun decryptMessage(
-        encryptedContent: ByteArray,
-        iv: ByteArray,
-        sharedSecret: ByteArray
+            encryptedContent: ByteArray,
+            iv: ByteArray,
+            hmac: ByteArray,
+            sharedSecret: ByteArray
     ): String {
-        val aesGcm = AesGcmJce(sharedSecret)
-        val decryptedBytes = aesGcm.decrypt(encryptedContent, iv)
-        return String(decryptedBytes)
+        try {
+            val (aesKey, hmacKey) = deriveKeys(sharedSecret)
+            // Verify HMAC
+            val mac = Mac.getInstance("HmacSHA256")
+            mac.init(SecretKeySpec(hmacKey, "HmacSHA256"))
+            mac.update(encryptedContent)
+            mac.update(iv)
+            val expectedHmac = mac.doFinal()
+            if (!expectedHmac.contentEquals(hmac)) {
+                throw SecurityException(
+                        "HMAC verification failed: message may have been tampered with."
+                )
+            }
+            val aesGcm = AesGcmJce(aesKey)
+            val decryptedBytes = aesGcm.decrypt(encryptedContent, iv)
+            return String(decryptedBytes)
+        } catch (e: Exception) {
+            throw RuntimeException("Decryption failed: ${e.message}", e)
+        }
     }
 
     /**
@@ -165,7 +212,8 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * Generates a new Diffie-Hellman key pair and returns the public key encoded as a Base64 string.
+     * Generates a new Diffie-Hellman key pair and returns the public key encoded as a Base64
+     * string.
      *
      * @return The Base64-encoded public key from the newly generated key pair.
      */

@@ -8,6 +8,7 @@ import tech.ziasvannes.safechat.data.models.ChatSession
 import tech.ziasvannes.safechat.data.models.EncryptionStatus
 import tech.ziasvannes.safechat.data.models.Message
 import tech.ziasvannes.safechat.data.models.MessageStatus
+import tech.ziasvannes.safechat.data.models.MessageType
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
 import java.util.UUID
 import javax.inject.Inject
@@ -16,12 +17,12 @@ class MessageRepositoryImpl @Inject constructor(
     private val messageDao: MessageDao
 ) : MessageRepository {
     /**
-         * Returns a flow emitting lists of messages for the specified chat session.
-         *
-         * @param chatSessionId The unique identifier of the chat session.
-         * @return A flow that emits the current list of messages for the chat session, updating as the data changes.
-         */
-        override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> =
+     * Returns a flow emitting lists of messages for the specified chat session.
+     *
+     * @param chatSessionId The unique identifier of the chat session.
+     * @return A flow that emits the current list of messages for the chat session, updating as the data changes.
+     */
+    override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> =
         messageDao.getMessagesForChat(chatSessionId.toString()).map { entities ->
             entities.map { it.toMessage() }
         }
@@ -65,13 +66,13 @@ class MessageRepositoryImpl @Inject constructor(
     }
 
     /**
-         * Returns a flow of chat sessions constructed from messages in the database.
-         *
-         * Each chat session includes participant IDs, the last message, a placeholder unread count of zero, and an encryption status set to ENCRYPTED. The session ID is randomly generated for each session. Unread count and actual encryption status are not yet implemented.
-         *
-         * @return A flow emitting lists of chat sessions.
-         */
-        override suspend fun getChatSessions(): Flow<List<ChatSession>> =
+     * Returns a flow of chat sessions constructed from messages in the database.
+     *
+     * Each chat session includes participant IDs, the last message, a placeholder unread count of zero, and an encryption status set to ENCRYPTED. The session ID is randomly generated for each session. Unread count and actual encryption status are not yet implemented.
+     *
+     * @return A flow emitting lists of chat sessions.
+     */
+    override suspend fun getChatSessions(): Flow<List<ChatSession>> =
         messageDao.getChatSessions().map { messages ->
             messages.map { message ->
                 ChatSession(
@@ -86,4 +87,48 @@ class MessageRepositoryImpl @Inject constructor(
                 )
             }
         }
+
+    override suspend fun getOrCreateChatSessionForContact(contactId: UUID): ChatSession {
+        // For now, assume current user is always this UUID
+        val currentUserId = UUID.fromString("00000000-0000-0000-0000-000000000001")
+        // Get all messages between current user and contact
+        val allMessages = messageDao.getMessagesForChat(currentUserId.toString())
+        var sessionMessages: List<Message> = emptyList()
+        allMessages.collect { messages ->
+            sessionMessages = messages
+                .map { it.toMessage() }
+                .filter {
+                    (it.senderId == currentUserId && it.receiverId == contactId) ||
+                            (it.senderId == contactId && it.receiverId == currentUserId)
+                }
+            // Only need the first emission
+            return@collect
+        }
+        if (sessionMessages.isEmpty()) {
+            // Insert a placeholder message to start the session
+            val placeholder = Message(
+                id = UUID.randomUUID(),
+                content = "Chat started",
+                timestamp = System.currentTimeMillis(),
+                senderId = currentUserId,
+                receiverId = contactId,
+                status = MessageStatus.DELIVERED,
+                type = MessageType.Text,
+                encryptedContent = ByteArray(0),
+                iv = ByteArray(0),
+                hmac = ByteArray(0)
+            )
+            messageDao.insertMessage(MessageEntity.fromMessage(placeholder))
+            sessionMessages = listOf(placeholder)
+        }
+        // Build ChatSession
+        val lastMessage = sessionMessages.maxByOrNull { it.timestamp }
+        return ChatSession(
+            id = UUID.nameUUIDFromBytes((currentUserId.toString() + contactId.toString()).toByteArray()),
+            participantIds = listOf(currentUserId, contactId),
+            lastMessage = lastMessage,
+            unreadCount = 0, // Not tracked yet
+            encryptionStatus = EncryptionStatus.ENCRYPTED // Default for now
+        )
+    }
 }

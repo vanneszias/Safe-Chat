@@ -42,4 +42,12 @@ suspend fun deleteMessage(messageId: UUID)
  * @return A [Flow] emitting lists of [ChatSession] objects.
  */
 suspend fun getChatSessions(): Flow<List<ChatSession>>
+    /**
+ * Gets an existing chat session with the given contact, or creates a new one if none exists.
+ *
+ * @param contactId The UUID of the contact to chat with.
+ * 
+ * @return The ChatSession for this contact.
+ */
+suspend fun getOrCreateChatSessionForContact(contactId: UUID): ChatSession
 }

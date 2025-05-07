@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
+import tech.ziasvannes.safechat.testing.FakeContactRepository
 import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.PublicKey
@@ -309,7 +310,9 @@ fun ProfileScreenPreview() {
         Surface {
             ProfileScreen(
                 onNavigateBack = {},
-                viewModel = PreviewProfileViewModel()
+                viewModel = PreviewProfileViewModel(
+                    FakeContactRepository()
+                )
             )
         }
     }
