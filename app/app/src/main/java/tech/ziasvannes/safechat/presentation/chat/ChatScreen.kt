@@ -36,14 +36,11 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
- * Displays the chat interface for a selected contact, including message history, input field, and
- * navigation controls.
+ * Displays the chat UI for a given chat session, including message history, input field, and navigation controls.
  *
- * Shows a list of messages exchanged with the contact, an input area for composing new messages,
- * and UI elements for navigation and encryption status. Loading and error states are presented as
- * overlays when applicable.
+ * Shows messages exchanged in the specified chat session, allows composing and sending new messages, and provides navigation and encryption status indicators. Loading and error states are presented as overlays when applicable.
  *
- * @param chatSessionId The unique identifier of the chat session.
+ * @param chatSessionId The unique identifier for the chat session to display.
  * @param onNavigateBack Callback invoked when the back navigation icon is pressed.
  */
 @Composable
@@ -134,11 +131,11 @@ fun ChatScreen(
 }
 
 /**
- * Displays a message input field with a send button for composing and sending chat messages.
+ * Provides a text input field and send button for composing and submitting chat messages.
  *
- * @param text The current input text.
- * @param onTextChange Callback invoked when the input text changes.
- * @param onSendClick Callback invoked when the send button is clicked.
+ * @param text The current message being composed.
+ * @param onTextChange Called when the input text changes.
+ * @param onSendClick Called when the send button is pressed.
  */
 @Composable
 private fun MessageInput(
@@ -159,6 +156,9 @@ private fun MessageInput(
     }
 }
 
+/**
+ * Displays a preview of the ChatScreen composable within the SafeChatTheme using a random chat session ID.
+ */
 @Preview
 @Composable
 fun ChatScreenPreview() {

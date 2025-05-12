@@ -10,10 +10,10 @@ object NavRoutes {
     const val TEST_SETTINGS = "test_settings"
 
     /**
-     * Returns the navigation route for a chat screen with the specified chat session ID.
+     * Constructs the navigation route string for a chat screen using the given chat session ID.
      *
-     * @param chatSessionId The unique identifier of the chat session to include in the route.
-     * @return The route string for navigating to the chat screen with the given session.
+     * @param chatSessionId The unique identifier for the chat session.
+     * @return The route string for navigating to the specified chat session.
      */
     fun createChatRoute(chatSessionId: String): String {
         return "chat/$chatSessionId"

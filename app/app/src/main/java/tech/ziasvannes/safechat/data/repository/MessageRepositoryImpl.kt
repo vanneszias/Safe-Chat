@@ -22,24 +22,22 @@ class MessageRepositoryImpl @Inject constructor(private val messageDao: MessageD
         }
 
         /**
-         * Returns a flow emitting lists of messages for the specified chat session.
-         *
-         * @param chatSessionId The unique identifier of the chat session.
-         * @return A flow that emits the current list of messages for the chat session, updating as
-         * the data changes.
-         */
+                 * Returns a flow that emits the list of messages for a given chat session, updating in real time as the data changes.
+                 *
+                 * @param chatSessionId The unique identifier of the chat session.
+                 * @return A flow emitting lists of messages associated with the specified chat session.
+                 */
         override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> =
                 messageDao.getMessagesForChat(chatSessionId.toString()).map { entities ->
                         entities.map { it.toMessage() }
                 }
 
         /**
-         * Inserts a new message into the database and returns a [Result] containing the original
-         * message.
+         * Attempts to insert a new message into the database and returns a [Result] containing the original message or an error.
          *
          * Any exceptions during insertion are captured and wrapped in the [Result].
          *
-         * @return A [Result] containing the inserted message, or an error if insertion fails.
+         * @return A [Result] containing the original message if successful, or an error if insertion fails.
          */
         override suspend fun sendMessage(message: Message): Result<Message> = runCatching {
                 messageDao.insertMessage(MessageEntity.fromMessage(message))
@@ -47,10 +45,10 @@ class MessageRepositoryImpl @Inject constructor(private val messageDao: MessageD
         }
 
         /**
-         * Updates the status of a message identified by its UUID.
+         * Updates the status of a message with the specified UUID.
          *
-         * @param messageId The unique identifier of the message to update.
-         * @param status The new status to set for the message.
+         * @param messageId The UUID of the message to update.
+         * @param status The new status to assign to the message.
          */
         override suspend fun updateMessageStatus(messageId: UUID, status: MessageStatus) {
                 messageDao.updateMessageStatus(messageId.toString(), status)
@@ -59,9 +57,7 @@ class MessageRepositoryImpl @Inject constructor(private val messageDao: MessageD
         /**
          * Deletes a message with the specified ID from the database.
          *
-         * Attempts to find and remove the message by collecting messages for the chat session
-         * identified by the given message ID. Note: The use of message ID as a chat session ID may
-         * indicate a logic issue.
+         * Searches for a message matching the given ID among messages associated with the provided ID as a chat session, and deletes it if found.
          *
          * @param messageId The unique identifier of the message to delete.
          */
@@ -74,14 +70,12 @@ class MessageRepositoryImpl @Inject constructor(private val messageDao: MessageD
         }
 
         /**
-         * Returns a flow of chat sessions constructed from messages in the database.
-         *
-         * Each chat session includes participant IDs, the last message, a placeholder unread count
-         * of zero, and an encryption status set to ENCRYPTED. The session ID is randomly generated
-         * for each session. Unread count and actual encryption status are not yet implemented.
-         *
-         * @return A flow emitting lists of chat sessions.
-         */
+                 * Emits a flow of chat sessions, each constructed from messages in the database.
+                 *
+                 * For each message, creates a `ChatSession` with a randomly generated session ID, participant IDs from sender and receiver, the message as the last message, unread count set to zero, and encryption status set to ENCRYPTED. Unread count and actual encryption status are placeholders and not yet implemented.
+                 *
+                 * @return A flow emitting lists of chat sessions.
+                 */
         override suspend fun getChatSessions(): Flow<List<ChatSession>> =
                 messageDao.getChatSessions().map { messages ->
                         messages.map { message ->
@@ -103,6 +97,14 @@ class MessageRepositoryImpl @Inject constructor(private val messageDao: MessageD
                         }
                 }
 
+        /**
+         * Retrieves an existing chat session between the current user and the specified contact, or creates a new one if none exists.
+         *
+         * If no messages are found between the users, a placeholder message is inserted to initiate the session. The chat session is constructed with a deterministic UUID based on the user and contact IDs, includes both participants, and sets the last message to the most recent message exchanged.
+         *
+         * @param contactId The UUID of the contact to retrieve or create a chat session with.
+         * @return The corresponding ChatSession object.
+         */
         override suspend fun getOrCreateChatSessionForContact(contactId: UUID): ChatSession {
                 Log.d(
                         "MessageRepositoryImpl",

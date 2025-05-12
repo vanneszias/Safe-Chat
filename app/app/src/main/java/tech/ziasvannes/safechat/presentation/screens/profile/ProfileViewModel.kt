@@ -72,10 +72,9 @@ constructor(
     }
 
     /**
-     * Loads the user's profile data asynchronously and updates the UI state.
+     * Asynchronously loads the user's profile data and updates the UI state.
      *
-     * Retrieves the current public key from the encryption repository and sets the user name and
-     * loading status. If an error occurs during loading, updates the state with an error message.
+     * Fetches the user's contact information and public key from the repositories, updating the state with the retrieved name, public key, and avatar URL. If loading fails, updates the state with an error message.
      */
     private fun loadProfile() {
         _state.update { it.copy(isLoading = true) }
@@ -104,11 +103,9 @@ constructor(
     }
 
     /**
-     * Persists the current profile changes and updates the UI state to reflect saving progress and
-     * completion.
+     * Saves the current profile information to the contact repository and updates the UI state.
      *
-     * Sets the loading indicator while saving, disables edit mode upon success, and updates the
-     * error state if saving fails.
+     * Sets the loading state during the save operation, disables edit mode upon successful save, and updates the error state if saving fails.
      */
     private fun saveProfile() {
         _state.update { it.copy(isLoading = true) }
@@ -136,12 +133,11 @@ constructor(
     }
 
     /**
-     * Updates the user's avatar by setting the avatar URL in the profile state.
+     * Updates the user's avatar in the profile state using the provided image URI.
      *
-     * Simulates avatar processing and updates the state with the new avatar URL or an error message
-     * if the operation fails.
+     * Simulates avatar processing and sets the avatar URL in the state, or updates the state with an error message if the operation fails.
      *
-     * @param uri The URI of the selected avatar image.
+     * @param uri The URI of the new avatar image.
      */
     private fun updateAvatar(uri: Uri) {
         _state.update { it.copy(isLoading = true) }
@@ -162,10 +158,9 @@ constructor(
     }
 
     /**
-     * Asynchronously generates a new encryption key pair and updates the profile state with the new
-     * public key.
+     * Initiates asynchronous generation of a new encryption key pair and updates the profile state with the resulting public key.
      *
-     * If key generation fails, updates the state with an error message.
+     * If key generation fails, the profile state is updated with an error message.
      */
     private fun generateNewKeyPair() {
         _state.update { it.copy(isLoading = true) }

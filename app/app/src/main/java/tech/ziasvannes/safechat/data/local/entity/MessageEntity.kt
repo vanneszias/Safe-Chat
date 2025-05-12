@@ -21,12 +21,12 @@ data class MessageEntity(
         val hmac: ByteArray
 ) {
     /**
-     * Converts this MessageEntity to a domain Message object.
-     *
-     * Transforms string-based IDs to UUIDs and copies all other fields directly.
-     *
-     * @return A Message instance representing the same data as this entity.
-     */
+             * Converts this MessageEntity into a domain Message object.
+             *
+             * Maps string-based UUID fields to UUID objects and copies all other properties, including encryption and integrity fields.
+             *
+             * @return A Message object containing the data from this entity.
+             */
     fun toMessage(): Message =
             Message(
                     id = UUID.fromString(id),
@@ -43,14 +43,13 @@ data class MessageEntity(
 
     companion object {
         /**
-         * Creates a [MessageEntity] from a [Message] domain model.
-         *
-         * Converts UUID fields in the [Message] to string representations and copies all other
-         * properties directly.
-         *
-         * @param message The domain model message to convert.
-         * @return A [MessageEntity] representing the given [Message] for database storage.
-         */
+                 * Converts a [Message] domain model into a [MessageEntity] for database storage.
+                 *
+                 * Transforms UUID fields to string representations and copies all other properties, including encryption and integrity fields.
+                 *
+                 * @param message The domain model message to convert.
+                 * @return A [MessageEntity] representing the provided [Message].
+                 */
         fun fromMessage(message: Message): MessageEntity =
                 MessageEntity(
                         id = message.id.toString(),
@@ -83,11 +82,11 @@ data class MessageEntity(
     }
 
     /**
-     * Returns the hash code value for this entity, based solely on its unique ID.
+     * Returns a hash code based on the entity's unique ID.
      *
-     * Entities with the same ID will have the same hash code.
+     * Entities with the same ID will produce the same hash code.
      *
-     * @return The hash code of the ID property.
+     * @return The hash code of the ID.
      */
     override fun hashCode(): Int {
         return id.hashCode()

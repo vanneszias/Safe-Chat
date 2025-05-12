@@ -15,6 +15,15 @@ import tech.ziasvannes.safechat.presentation.screens.profile.ProfileScreen
 import tech.ziasvannes.safechat.presentation.screens.settings.SettingsScreen
 
 
+/**
+ * Sets up the navigation graph for the SafeChat app using Jetpack Compose Navigation.
+ *
+ * Defines navigation routes for contacts, chat, settings, add contact, and profile screens, and handles navigation events between them.
+ *
+ * @param navController The navigation controller managing app navigation.
+ * @param startDestination The initial route to display; defaults to the contacts screen.
+ * @param modifier Modifier for styling or layout adjustments.
+ */
 @Composable
 fun SafeChatNavHost(
         navController: NavHostController,

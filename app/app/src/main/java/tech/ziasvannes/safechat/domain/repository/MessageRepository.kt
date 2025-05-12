@@ -35,19 +35,16 @@ suspend fun updateMessageStatus(messageId: UUID, status: MessageStatus)
  */
 suspend fun deleteMessage(messageId: UUID)
     /**
- * Returns a flow that emits lists of all chat sessions.
+ * Returns a flow emitting the current list of all chat sessions, updating as sessions are added or removed.
  *
- * The flow updates whenever the set of chat sessions changes.
- *
- * @return A [Flow] emitting lists of [ChatSession] objects.
+ * @return A [Flow] that emits updated lists of [ChatSession] objects whenever the set of chat sessions changes.
  */
 suspend fun getChatSessions(): Flow<List<ChatSession>>
     /**
- * Gets an existing chat session with the given contact, or creates a new one if none exists.
+ * Retrieves the chat session associated with the specified contact, creating a new session if one does not exist.
  *
- * @param contactId The UUID of the contact to chat with.
- * 
- * @return The ChatSession for this contact.
+ * @param contactId The unique identifier of the contact.
+ * @return The chat session linked to the given contact.
  */
 suspend fun getOrCreateChatSessionForContact(contactId: UUID): ChatSession
 }

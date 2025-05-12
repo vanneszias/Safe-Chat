@@ -35,6 +35,13 @@ import tech.ziasvannes.safechat.presentation.components.LoadingDialog
  *
  * @param onNavigateBack Callback invoked when the user requests to navigate back.
  */
+/**
+ * Displays the user profile screen with editable profile information and security key management.
+ *
+ * Shows the user's avatar and username, allows editing profile details, and provides options to view, copy, or regenerate the user's public key. Handles error and loading states, and supports navigation back from the profile screen.
+ *
+ * @param onNavigateBack Callback invoked when the user requests to navigate back.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {

@@ -37,6 +37,16 @@ import tech.ziasvannes.safechat.presentation.components.SearchTextField
  * @param onNavigateToMe Callback invoked when the 'Me' contact is selected.
  * @param onAddContactClick Callback invoked when the add contact button is pressed.
  */
+/**
+ * Displays the contact list screen with search, loading, error handling, and navigation actions.
+ *
+ * Shows a searchable list of contacts, a loading indicator while contacts are loading, and error messages via a snackbar. Provides actions to navigate to the user's profile, refresh the contact list, add a new contact, or open a chat with a selected contact.
+ *
+ * @param onNavigateToChat Callback invoked with the chat session ID when a contact is selected.
+ * @param onNavigateToAddContact Callback invoked to navigate to the add contact screen.
+ * @param onNavigateToMe Callback invoked to navigate to the user's profile.
+ * @param onAddContactClick Callback invoked when the add contact action is triggered.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactListScreen(

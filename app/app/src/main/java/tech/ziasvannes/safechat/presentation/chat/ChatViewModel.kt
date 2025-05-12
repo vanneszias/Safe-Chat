@@ -33,13 +33,11 @@ constructor(
     val state: StateFlow<ChatState> = _state.asStateFlow()
 
     /**
-     * Handles chat-related events and updates the UI state or triggers actions accordingly.
+     * Handles chat events by updating chat UI state or triggering related actions.
      *
-     * Processes events such as sending messages, updating message text, initiating chat loading,
-     * retrying encryption, and clearing error messages by delegating to the appropriate methods or
-     * updating state.
+     * Processes events such as sending messages, updating the message input, loading chat data for a session, retrying encryption, and clearing error messages.
      *
-     * @param event The chat event to handle.
+     * @param event The chat event to process.
      */
     fun onEvent(event: ChatEvent) {
         when (event) {
@@ -62,13 +60,11 @@ constructor(
     }
 
     /**
-     * Loads contact details and observes messages for the specified chat session, updating the UI
-     * state accordingly.
+     * Loads contact details and observes messages for the given chat session, updating the UI state with contact information and decrypted messages.
      *
-     * If an error occurs during loading or message collection, updates the state with a
-     * user-friendly error message.
+     * Attempts to decrypt each message using the contact's public key and a computed shared secret. If decryption fails for a message, its content is replaced with a placeholder. Updates the UI state with any errors encountered during loading or message processing.
      *
-     * @param chatSessionId The unique identifier of the chat session whose chat is to be loaded.
+     * @param chatSessionId The unique identifier of the chat session to load.
      */
     private fun loadChat(chatSessionId: UUID) {
         viewModelScope.launch {
@@ -125,12 +121,11 @@ constructor(
     }
 
     /**
-     * Sends a text message to the current contact and updates the UI state based on the result.
+     * Attempts to send a text message to the current contact and updates the chat UI state accordingly.
      *
-     * If the message is sent successfully, clears the message input field. If sending fails,
-     * updates the state with the error message.
+     * If the message is sent successfully, the message input field is cleared. If sending fails, the error message is reflected in the UI state.
      *
-     * @param content The text content of the message to send.
+     * @param content The text content of the message to be sent.
      */
     private fun sendMessage(content: String) {
         viewModelScope.launch {
@@ -152,10 +147,9 @@ constructor(
     }
 
     /**
-     * Attempts to re-establish end-to-end encryption with the current contact.
+     * Re-initiates end-to-end encryption with the currently selected contact.
      *
-     * Updates the UI state to reflect encryption status or any encountered error. If no contact is
-     * selected, the operation is skipped.
+     * If a contact is selected, attempts to perform a key exchange and updates the UI state to reflect the encryption status or any error encountered. Does nothing if no contact is selected.
      */
     private fun retryEncryption() {
         viewModelScope.launch {

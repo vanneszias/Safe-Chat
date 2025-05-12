@@ -199,7 +199,7 @@ private fun getStatusColor(status: MessageStatus): Color {
 /**
  * Displays a preview of the MessageBubble composable with sample sent, received, and file messages.
  *
- * Renders three example message bubbles inside a themed column to demonstrate different message types and sender alignments.
+ * Renders three example message bubbles in a themed column to showcase different message types and sender alignments for UI development and testing.
  */
 @Preview(showBackground = true)
 @Composable

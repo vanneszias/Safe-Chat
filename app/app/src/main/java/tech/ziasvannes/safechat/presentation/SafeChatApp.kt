@@ -22,11 +22,9 @@ import tech.ziasvannes.safechat.presentation.navigation.SafeChatNavHost
 /** Main container for the SafeChat application */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
- * Composable that defines the main UI and navigation structure for the SafeChat app.
+ * Composable that sets up the main UI scaffold and navigation for the SafeChat app.
  *
- * Sets up a scaffold with a bottom navigation bar for Chats, Profile, and Settings, which is hidden
- * on chat detail and add contact screens. The main content area displays screens based on
- * navigation state.
+ * Displays a bottom navigation bar for "Contacts" and "Settings" screens, hiding it on chat detail and add contact screens. Shows a floating action button for adding contacts when on the "Contacts" screen. The main content area renders screens based on navigation state.
  */
 @Composable
 fun SafeChatApp() {

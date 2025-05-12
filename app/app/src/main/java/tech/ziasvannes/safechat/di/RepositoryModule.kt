@@ -15,18 +15,33 @@ import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 @Module
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
+    /**
+     * Provides a singleton instance of ContactRepository using ContactRepositoryImpl.
+     *
+     * @return The ContactRepository implementation.
+     */
     @Provides
     @Singleton
     fun provideContactRepository(
         impl: ContactRepositoryImpl
     ): ContactRepository = impl
 
+    /**
+     * Provides a singleton instance of MessageRepository using MessageRepositoryImpl.
+     *
+     * @return The MessageRepository implementation.
+     */
     @Provides
     @Singleton
     fun provideMessageRepository(
         impl: MessageRepositoryImpl
     ): MessageRepository = impl
 
+    /**
+     * Provides a singleton instance of EncryptionRepository using EncryptionRepositoryImpl.
+     *
+     * @return The singleton EncryptionRepository implementation.
+     */
     @Provides
     @Singleton
     fun provideEncryptionRepository(

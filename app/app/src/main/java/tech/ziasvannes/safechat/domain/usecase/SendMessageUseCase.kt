@@ -28,6 +28,16 @@ constructor(
      * @param type The type of message to send (defaults to text).
      * @return A [Result] containing the sent [Message] on success, or an exception on failure.
      */
+    /**
+     * Sends an encrypted message to a specified recipient and returns the result.
+     *
+     * Retrieves the recipient's contact information, computes a shared encryption secret, encrypts the message content, constructs a new message, and sends it. Returns a [Result] containing the sent [Message] on success or an exception on failure.
+     *
+     * @param content The plaintext content of the message to send.
+     * @param receiverId The UUID of the recipient.
+     * @param type The type of the message, defaulting to text.
+     * @return A [Result] containing the sent [Message] if successful, or an exception if the operation fails.
+     */
     suspend operator fun invoke(
             content: String,
             receiverId: UUID,

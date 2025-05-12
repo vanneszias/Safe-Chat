@@ -12,52 +12,60 @@ import tech.ziasvannes.safechat.data.local.entity.ContactEntity
 @Dao
 interface ContactDao {
     /**
-     * Returns a reactive stream of all contacts in the database.
-     *
-     * @return A [Flow] emitting the current list of all [ContactEntity] objects whenever the data
-     * changes.
-     */
+ * Returns a reactive stream emitting the list of all contacts in the database.
+ *
+ * The returned [Flow] emits an updated list of [ContactEntity] objects whenever the contacts table changes.
+ *
+ * @return A [Flow] of the current list of all contacts.
+ */
     @Query("SELECT * FROM contacts") fun getAllContacts(): Flow<List<ContactEntity>>
 
     /**
-     * Retrieves a contact by its unique ID.
+     * Returns the contact with the specified unique ID, or null if no such contact exists.
      *
      * @param contactId The unique identifier of the contact to retrieve.
-     * @return The contact with the specified ID, or null if not found.
+     * @return The matching contact, or null if not found.
      */
     @Query("SELECT * FROM contacts WHERE id = :contactId")
     suspend fun getContactById(contactId: String): ContactEntity?
 
     /**
-     * Returns a reactive stream of contacts whose names contain the specified query substring.
+     * Returns a reactive stream of contacts whose names contain the given substring.
      *
-     * @param query The substring to search for within contact names.
-     * @return A [Flow] emitting lists of matching [ContactEntity] objects.
+     * The stream emits updated lists whenever the underlying contact data changes.
+     *
+     * @param query Substring to match within contact names.
+     * @return A [Flow] emitting lists of [ContactEntity] objects whose names contain the query.
      */
     @Query("SELECT * FROM contacts WHERE name LIKE '%' || :query || '%'")
     fun searchContacts(query: String): Flow<List<ContactEntity>>
 
     /**
-     * Inserts a contact into the database, replacing any existing entry with the same primary key.
+     * Inserts a contact into the database, replacing any existing contact with the same primary key.
      *
-     * @param contact The contact entity to insert.
+     * If a contact with the same primary key already exists, it will be overwritten.
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertContact(contact: ContactEntity)
 
     /**
-     * Updates an existing contact in the database with new values.
-     *
-     * If the contact does not exist, no changes are made.
-     */
+ * Updates the specified contact in the database with new values.
+ *
+ * If the contact does not exist, no update is performed.
+ */
     @Update suspend fun updateContact(contact: ContactEntity)
 
     /**
-     * Deletes the specified contact from the database.
-     *
-     * @param contact The contact entity to remove.
-     */
+ * Removes the specified contact from the database.
+ *
+ * @param contact The contact entity to delete.
+ */
     @Delete suspend fun deleteContact(contact: ContactEntity)
 
-    @Query("SELECT COUNT(*) FROM contacts") suspend fun getCount(): Int
+    /**
+ * Returns the total number of contacts in the database.
+ *
+ * @return The count of contact entries.
+ */
+@Query("SELECT COUNT(*) FROM contacts") suspend fun getCount(): Int
 }

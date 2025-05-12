@@ -34,12 +34,12 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
- * Displays the main settings screen with configurable sections for appearance, notifications, privacy, developer options, and app information.
+ * Displays the main settings screen with configurable sections for appearance, notifications, privacy, and app information.
  *
- * Presents toggles and actions for various user preferences, including dark mode, notifications, message retention, database encryption, and developer test settings. Supports destructive actions with confirmation dialogs and displays error messages as snackbars. Navigation callbacks allow returning to the previous screen and accessing test mode settings.
+ * Presents toggles and actions for user preferences such as dark mode, notifications, message retention, auto-deletion, and database encryption. Supports destructive actions like clearing all messages and resetting settings, each with confirmation dialogs. Shows error messages as snackbars and a loading dialog during updates.
  *
- * @param onNavigateBack Callback invoked when the user requests to navigate back.
- * @param onNavigateToTestSettings Callback invoked when the user selects the test mode settings option.
+ * @param onNavigateBack Callback for handling back navigation (currently unused).
+ * @param onNavigateToTestSettings Callback for navigating to test settings (currently unused).
  */
 @Composable
 fun SettingsScreen(

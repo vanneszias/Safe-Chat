@@ -24,12 +24,11 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     private val KEY_ALIAS = "SafeChatKeyPair"
 
     /**
-     * Retrieves Diffie-Hellman (DH) parameters for key generation.
+     * Obtains Diffie-Hellman (DH) parameters for key generation.
      *
-     * Attempts to generate secure 2048-bit DH parameters dynamically. If generation fails, falls
-     * back to using the standardized 2048-bit MODP Group (RFC 3526 Group 14).
+     * Attempts to generate secure 2048-bit DH parameters dynamically; if this fails, falls back to the standardized 2048-bit MODP Group 14 parameters (RFC 3526).
      *
-     * @return A DHParameterSpec containing the prime modulus and generator for DH key exchange.
+     * @return DHParameterSpec containing the prime modulus and generator for DH key exchange.
      */
     private fun getDHParameters(): DHParameterSpec {
         // Use NIST's standardized 2048-bit DH parameters (SP 800-56A)
@@ -51,9 +50,9 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * Generates a Diffie-Hellman key pair and stores it securely in the AndroidKeyStore.
+     * Generates a Diffie-Hellman key pair and securely stores it in the AndroidKeyStore.
      *
-     * @return The generated DH key pair.
+     * @return The generated Diffie-Hellman key pair.
      */
     override suspend fun generateKeyPair(): KeyPair {
         val keyPairGenerator = KeyPairGenerator.getInstance("DH", "AndroidKeyStore")
@@ -75,8 +74,7 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * No-op for storing key pairs, as keys generated in AndroidKeyStore are automatically
-     * persisted.
+     * Does nothing, as key pairs generated in AndroidKeyStore are automatically persisted.
      */
     override suspend fun storeKeyPair(keyPair: KeyPair) {
         // Keys are automatically stored in AndroidKeyStore when generated
@@ -93,9 +91,9 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * Retrieves the Diffie-Hellman private key stored in the AndroidKeyStore.
+     * Retrieves the Diffie-Hellman private key from the AndroidKeyStore.
      *
-     * @return The stored private key associated with the predefined key alias.
+     * @return The private key associated with the predefined key alias, or throws if not found.
      */
     override suspend fun getPrivateKey(): PrivateKey {
         val entry = keyStore.getEntry(KEY_ALIAS, null) as KeyStore.PrivateKeyEntry
@@ -103,11 +101,10 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * Computes a shared secret using the Diffie-Hellman key agreement protocol with the stored
-     * private key and a provided public key.
+     * Computes the Diffie-Hellman shared secret using the stored private key and a given public key.
      *
-     * @param publicKey The public key from the other party in the key exchange.
-     * @return The computed shared secret as a byte array.
+     * @param publicKey The public key from the other participant in the key exchange.
+     * @return The resulting shared secret as a byte array.
      */
     override suspend fun computeSharedSecret(publicKey: PublicKey): ByteArray {
         val privateKey = getPrivateKey()
@@ -117,6 +114,12 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
         return keyAgreement.generateSecret()
     }
 
+    /**
+     * Derives separate 256-bit AES and HMAC keys from a shared secret using HKDF with HMAC-SHA256.
+     *
+     * @param sharedSecret The input byte array from which to derive keys.
+     * @return A pair containing the derived AES key and HMAC key, each as a 32-byte array.
+     */
     private fun deriveKeys(sharedSecret: ByteArray): Pair<ByteArray, ByteArray> {
         // Use HKDF to derive two keys: one for AES, one for HMAC
         val salt = ByteArray(32) // Could be a static or random salt; for now, all zeros
@@ -130,15 +133,13 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * Encrypts a plaintext message using AES-GCM with the provided shared secret.
+     * Encrypts a plaintext message using AES-GCM and authenticates it with HMAC-SHA256.
      *
-     * Generates a random 12-byte initialization vector (IV), encrypts the message using AES-GCM
-     * with the shared secret as the key, and returns a pair containing the encrypted bytes and the
-     * IV.
+     * Derives separate AES and HMAC keys from the provided shared secret. Encrypts the message using AES-GCM with a randomly generated 12-byte IV, then computes an HMAC-SHA256 over the ciphertext and IV. Returns a triple containing the encrypted message bytes, the IV, and the HMAC.
      *
      * @param message The plaintext message to encrypt.
-     * @param sharedSecret The shared secret key used for AES-GCM encryption.
-     * @return A pair consisting of the encrypted message bytes and the IV used for encryption.
+     * @param sharedSecret The shared secret from which encryption and authentication keys are derived.
+     * @return A triple containing the encrypted message bytes, the IV used for encryption, and the HMAC for authentication.
      */
     override suspend fun encryptMessage(
             message: String,
@@ -162,13 +163,17 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * Decrypts AES-GCM encrypted data using the provided shared secret and initialization vector.
+     * Decrypts AES-GCM encrypted data using a shared secret, verifying integrity with HMAC.
      *
-     * @param encryptedContent The encrypted message bytes.
-     * @param iv The initialization vector used for encryption.
-     * @param hmac The HMAC of the encrypted content and iv.
-     * @param sharedSecret The shared secret key for decryption.
-     * @return The decrypted message as a UTF-8 string.
+     * Verifies the provided HMAC over the encrypted content and IV using a key derived from the shared secret.
+     * If verification succeeds, decrypts the content using AES-GCM and returns the plaintext as a UTF-8 string.
+     * Throws a SecurityException if HMAC verification fails, or a RuntimeException if decryption encounters an error.
+     *
+     * @param encryptedContent The ciphertext to decrypt.
+     * @param iv The initialization vector used during encryption.
+     * @param hmac The HMAC for integrity verification.
+     * @param sharedSecret The shared secret from which encryption and HMAC keys are derived.
+     * @return The decrypted plaintext message as a UTF-8 string.
      */
     override suspend fun decryptMessage(
             encryptedContent: ByteArray,
@@ -198,9 +203,12 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * Retrieves the stored public key as a Base64-encoded string.
+     * Returns the stored public key as a Base64-encoded string, or null if unavailable.
      *
-     * @return The Base64-encoded public key, or null if the key is unavailable.
+     * Attempts to retrieve the public key from secure storage and encodes it using Base64 without line wraps.
+     * Returns null if the key cannot be retrieved or an error occurs.
+     *
+     * @return The Base64-encoded public key string, or null if not found.
      */
     override suspend fun getCurrentPublicKey(): String? {
         return try {
@@ -212,10 +220,9 @@ class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
     }
 
     /**
-     * Generates a new Diffie-Hellman key pair and returns the public key encoded as a Base64
-     * string.
+     * Generates a new Diffie-Hellman key pair and returns the public key as a Base64-encoded string.
      *
-     * @return The Base64-encoded public key from the newly generated key pair.
+     * @return The Base64-encoded public key of the newly generated key pair, without line wraps.
      */
     override suspend fun generateNewKeyPair(): String {
         val keyPair = generateKeyPair()

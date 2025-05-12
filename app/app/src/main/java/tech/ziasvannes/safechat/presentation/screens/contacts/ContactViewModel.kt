@@ -68,11 +68,9 @@ constructor(
     }
 
     /**
-     * Loads the list of contacts and updates the state with the results.
+     * Retrieves the list of contacts and updates the UI state with the results or any errors.
      *
-     * Initiates contact retrieval, sets the loading state, and updates the state with the full and
-     * filtered contact lists. If an error occurs during loading, updates the state with an error
-     * message.
+     * Sets the loading state, collects contacts from the use case, and updates both the full and filtered contact lists based on the current search query. If an error occurs during retrieval, updates the state with an error message.
      */
     private fun loadContacts() {
         _state.update { it.copy(isLoading = true) }
@@ -119,12 +117,11 @@ constructor(
     }
 
     /**
-     * Updates the search query in the state and filters the contacts list based on the query.
+     * Updates the search query and filters the contacts in the state accordingly.
      *
-     * If the query is blank, all contacts are included in the filtered list; otherwise, only
-     * contacts whose names contain the query (case-insensitive) are included.
+     * If the query is blank, all contacts are shown; otherwise, only contacts whose names contain the query (case-insensitive) are included in the filtered list.
      *
-     * @param query The new search query string to apply.
+     * @param query The search string to filter contacts by name.
      */
     private fun updateSearchQuery(query: String) {
         _state.update { currentState ->
@@ -142,10 +139,9 @@ constructor(
     }
 
     /**
-     * Attempts to delete a contact by its unique identifier and updates the state with an error
-     * message if deletion fails.
+     * Deletes a contact by its unique identifier and updates the state with an error message if the operation fails.
      *
-     * @param contactId The UUID of the contact to be deleted.
+     * @param contactId The unique identifier of the contact to delete.
      */
     private fun deleteContact(contactId: java.util.UUID) {
         viewModelScope.launch {
@@ -158,6 +154,12 @@ constructor(
         }
     }
 
+    /**
+     * Initiates or retrieves a chat session for the specified contact and triggers navigation to the chat session.
+     *
+     * @param contact The contact for whom to start or retrieve a chat session.
+     * @param onNavigate Callback invoked with the chat session ID to perform navigation.
+     */
     fun startChatWithContact(contact: Contact, onNavigate: (UUID) -> Unit) {
         viewModelScope.launch {
             try {
