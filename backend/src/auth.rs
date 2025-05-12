@@ -27,6 +27,30 @@ struct Claims {
     exp: usize,
 }
 
+/// Handles user registration by creating a new user with a hashed password and generated public key.
+///
+/// Accepts a JSON payload with a username and password, hashes the password using Argon2, generates a base64-encoded public key, and inserts the new user into the database. Returns HTTP 201 with the public key on success, HTTP 409 if the username already exists, or HTTP 500 on other errors.
+///
+/// # Examples
+///
+/// ```
+/// use axum::body::Body;
+/// use axum::http::{Request, StatusCode};
+/// use serde_json::json;
+///
+/// let app = axum::Router::new().route("/register", axum::routing::post(register));
+/// let payload = json!({ "username": "alice", "password": "secret" });
+/// let req = Request::builder()
+///     .method("POST")
+///     .uri("/register")
+///     .header("content-type", "application/json")
+///     .body(Body::from(payload.to_string()))
+///     .unwrap();
+///
+/// // In a test context, call the app and assert the response:
+/// // let response = app.oneshot(req).await.unwrap();
+/// // assert_eq!(response.status(), StatusCode::CREATED);
+/// ```
 pub async fn register(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<RegisterRequest>,
@@ -63,6 +87,19 @@ pub async fn register(
     }
 }
 
+/// Authenticates a user and returns a JWT token on successful login.
+///
+/// Accepts a JSON payload with username and password, verifies the credentials against the database,
+/// and issues a JWT token valid for 24 hours if authentication succeeds. Returns appropriate HTTP status codes
+/// and error messages for invalid credentials, database errors, or token creation failures.
+///
+/// # Examples
+///
+/// ```
+/// // Example Axum route usage:
+/// let app = axum::Router::new().route("/login", axum::routing::post(login));
+/// // Send POST request with JSON: { "username": "alice", "password": "secret" }
+/// ```
 pub async fn login(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<LoginRequest>,

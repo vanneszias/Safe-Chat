@@ -11,11 +11,28 @@ use tracing_subscriber;
 use state::AppState;
 use auth::{register, login};
 
+/// ```
 async fn health_check() -> impl axum::response::IntoResponse {
     (axum::http::StatusCode::OK, "OK")
 }
 
 #[tokio::main]
+/// Initializes and runs the Axum web server application.
+///
+/// Loads environment variables, sets up logging, establishes a PostgreSQL connection pool,
+/// configures shared application state, and starts the HTTP server with authentication and health check routes.
+///
+/// # Panics
+///
+/// Panics if required environment variables are missing, the database connection fails, or the server cannot bind to the specified address.
+///
+/// # Examples
+///
+/// ```no_run
+/// // To run the server, simply execute the binary:
+/// // $ cargo run
+/// // The server will listen on the port specified by SERVER_PORT or default to 8080.
+/// ```
 async fn main() {
     dotenv().ok();
     tracing_subscriber::fmt::init();
