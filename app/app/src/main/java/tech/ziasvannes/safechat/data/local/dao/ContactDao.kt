@@ -14,11 +14,11 @@ interface ContactDao {
     /**
      * Returns a reactive stream of all contacts in the database.
      *
-     * @return A [Flow] emitting the current list of all [ContactEntity] objects whenever the data changes.
+     * @return A [Flow] emitting the current list of all [ContactEntity] objects whenever the data
+     * changes.
      */
-    @Query("SELECT * FROM contacts")
-    fun getAllContacts(): Flow<List<ContactEntity>>
-    
+    @Query("SELECT * FROM contacts") fun getAllContacts(): Flow<List<ContactEntity>>
+
     /**
      * Retrieves a contact by its unique ID.
      *
@@ -27,7 +27,7 @@ interface ContactDao {
      */
     @Query("SELECT * FROM contacts WHERE id = :contactId")
     suspend fun getContactById(contactId: String): ContactEntity?
-    
+
     /**
      * Returns a reactive stream of contacts whose names contain the specified query substring.
      *
@@ -36,7 +36,7 @@ interface ContactDao {
      */
     @Query("SELECT * FROM contacts WHERE name LIKE '%' || :query || '%'")
     fun searchContacts(query: String): Flow<List<ContactEntity>>
-    
+
     /**
      * Inserts a contact into the database, replacing any existing entry with the same primary key.
      *
@@ -44,20 +44,20 @@ interface ContactDao {
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertContact(contact: ContactEntity)
-    
+
     /**
      * Updates an existing contact in the database with new values.
      *
      * If the contact does not exist, no changes are made.
      */
-    @Update
-    suspend fun updateContact(contact: ContactEntity)
-    
+    @Update suspend fun updateContact(contact: ContactEntity)
+
     /**
      * Deletes the specified contact from the database.
      *
      * @param contact The contact entity to remove.
      */
-    @Delete
-    suspend fun deleteContact(contact: ContactEntity)
+    @Delete suspend fun deleteContact(contact: ContactEntity)
+
+    @Query("SELECT COUNT(*) FROM contacts") suspend fun getCount(): Int
 }

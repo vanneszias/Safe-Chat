@@ -1,5 +1,6 @@
 package tech.ziasvannes.safechat.presentation.screens.contacts
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,8 +18,6 @@ import tech.ziasvannes.safechat.data.models.Contact
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
 import tech.ziasvannes.safechat.domain.usecase.GetContactsUseCase
 import tech.ziasvannes.safechat.domain.usecase.GetOrCreateChatSessionUseCase
-import tech.ziasvannes.safechat.testing.FakeMessageRepository
-import tech.ziasvannes.safechat.testing.TestMode
 
 @HiltViewModel
 open class ContactViewModel
@@ -26,8 +25,7 @@ open class ContactViewModel
 constructor(
         private val getContactsUseCase: GetContactsUseCase,
         private val contactRepository: ContactRepository,
-        private val getOrCreateChatSessionUseCase: GetOrCreateChatSessionUseCase,
-        private val fakeMessageRepository: FakeMessageRepository? = null
+        private val getOrCreateChatSessionUseCase: GetOrCreateChatSessionUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ContactState())
@@ -91,17 +89,6 @@ constructor(
                             }
                         }
                         .onEach { contacts ->
-                            // In test mode, ensure every contact has a chat session
-                            if (TestMode.useTestRepositories && fakeMessageRepository != null) {
-                                contacts.forEach { contact ->
-                                    // Launch in background, don't block UI
-                                    viewModelScope.launch {
-                                        fakeMessageRepository.getOrCreateChatSessionForContact(
-                                                contact.id
-                                        )
-                                    }
-                                }
-                            }
                             _state.update {
                                 val filteredList =
                                         if (it.searchQuery.isBlank()) {
@@ -173,8 +160,25 @@ constructor(
 
     fun startChatWithContact(contact: Contact, onNavigate: (UUID) -> Unit) {
         viewModelScope.launch {
-            val chatSession = getOrCreateChatSessionUseCase(contact.id)
-            onNavigate(chatSession.id)
+            try {
+                Log.d(
+                        "ContactViewModel",
+                        "startChatWithContact called for contact: ${contact.name} (${contact.id})"
+                )
+                val chatSession = getOrCreateChatSessionUseCase(contact.id)
+                Log.d("ContactViewModel", "Navigating to chat session: ${chatSession.id}")
+                try {
+                    onNavigate(chatSession.id)
+                    Log.d(
+                            "ContactViewModel",
+                            "onNavigate called with chatSession.id: ${chatSession.id}"
+                    )
+                } catch (navEx: Exception) {
+                    Log.e("ContactViewModel", "Exception in onNavigate", navEx)
+                }
+            } catch (e: Exception) {
+                Log.e("ContactViewModel", "Failed to get or create chat session: ${e.message}", e)
+            }
         }
     }
 }

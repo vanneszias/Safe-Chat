@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 import tech.ziasvannes.safechat.data.models.Contact
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
-import tech.ziasvannes.safechat.testing.TestDataGenerator
+import java.util.UUID
 
 @HiltViewModel
 open class ProfileViewModel
@@ -82,14 +82,14 @@ constructor(
 
         viewModelScope.launch {
             try {
-                val selfId = TestDataGenerator.currentUserId
+                val selfId = UUID.fromString("00000000-0000-0000-0000-000000000000")
                 val contact = contactRepository.getContactById(selfId)
                 val publicKey =
                         encryptionRepository.getCurrentPublicKey()
                                 ?: contact?.publicKey ?: "No key available"
                 _state.update {
                     it.copy(
-                            userName = contact?.name ?: TestDataGenerator.currentUserName,
+                            userName = contact?.name ?: "",
                             userPublicKey = publicKey,
                             avatarUrl = contact?.avatarUrl,
                             isLoading = false
@@ -115,7 +115,7 @@ constructor(
 
         viewModelScope.launch {
             try {
-                val selfId = TestDataGenerator.currentUserId
+                val selfId = UUID.fromString("00000000-0000-0000-0000-000000000000")
                 val contact =
                         Contact(
                                 id = selfId,

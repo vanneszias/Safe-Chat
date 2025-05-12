@@ -17,8 +17,6 @@ import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
 import tech.ziasvannes.safechat.domain.usecase.InitiateKeyExchangeUseCase
 import tech.ziasvannes.safechat.domain.usecase.SendMessageUseCase
-import tech.ziasvannes.safechat.testing.FakeMessageRepository
-import tech.ziasvannes.safechat.testing.TestMode
 
 @HiltViewModel
 class ChatViewModel
@@ -77,28 +75,9 @@ constructor(
             _state.update { it.copy(isLoading = true) }
 
             try {
-                // Get the chat session and contactId
-                val (contactId, session) =
-                        if (TestMode.useTestRepositories &&
-                                        messageRepository is FakeMessageRepository
-                        ) {
-                            val fakeRepo = messageRepository as FakeMessageRepository
-                            val session =
-                                    fakeRepo.chatSessions.find { it.id == chatSessionId }
-                                            ?: fakeRepo.getOrCreateChatSessionForContact(
-                                                    chatSessionId
-                                            )
-                            val contactId =
-                                    session.participantIds.firstOrNull {
-                                        it != fakeRepo.currentUserId
-                                    }
-                                            ?: chatSessionId
-                            contactId to session
-                        } else {
-                            // In real mode, assume chatSessionId is the contactId for now
-                            // (fallback)
-                            chatSessionId to null
-                        }
+                // In real mode, assume chatSessionId is the contactId for now (fallback)
+                val contactId = chatSessionId
+                val session: Any? = null // No session object in real mode
 
                 // Load contact information
                 val contact = contactRepository.getContactById(contactId)
@@ -107,31 +86,31 @@ constructor(
                 // Start observing messages
                 messageRepository.getMessages(chatSessionId).collect { messages ->
                     val decryptedMessages =
-                            if (contact != null) {
-                                val recipientPublicKey =
-                                        java.security.KeyFactory.getInstance("DH")
-                                                .generatePublic(
-                                                        java.security.spec.X509EncodedKeySpec(
-                                                                contact.publicKey.toByteArray()
-                                                        )
-                                                )
-                                val sharedSecret =
-                                        encryptionRepository.computeSharedSecret(recipientPublicKey)
-                                messages.map { msg ->
-                                    try {
-                                        val decryptedContent =
-                                                encryptionRepository.decryptMessage(
-                                                        msg.encryptedContent,
-                                                        msg.iv,
-                                                        msg.hmac,
-                                                        sharedSecret
-                                                )
-                                        msg.copy(content = decryptedContent)
-                                    } catch (e: Exception) {
-                                        msg.copy(content = "[Decryption failed]")
-                                    }
+                        if (contact != null) {
+                            val recipientPublicKey =
+                                java.security.KeyFactory.getInstance("DH")
+                                    .generatePublic(
+                                        java.security.spec.X509EncodedKeySpec(
+                                            contact.publicKey.toByteArray()
+                                        )
+                                    )
+                            val sharedSecret =
+                                encryptionRepository.computeSharedSecret(recipientPublicKey)
+                            messages.map { msg ->
+                                try {
+                                    val decryptedContent =
+                                        encryptionRepository.decryptMessage(
+                                            msg.encryptedContent,
+                                            msg.iv,
+                                            msg.hmac,
+                                            sharedSecret
+                                        )
+                                    msg.copy(content = decryptedContent)
+                                } catch (e: Exception) {
+                                    msg.copy(content = "[Decryption failed]")
                                 }
-                            } else messages
+                            }
+                        } else messages
                     _state.update { it.copy(messages = decryptedMessages) }
                 }
             } catch (e: Exception) {

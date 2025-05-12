@@ -125,14 +125,6 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Navigate back"
-                        )
-                    }
-                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -208,19 +200,7 @@ fun SettingsScreen(
             }
             
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // Developer section - Added for test settings
-            SettingsSection("Developer") {
-                SettingItem(
-                    title = "Test Mode Settings",
-                    description = "Configure test data and features for development",
-                    icon = Icons.Default.Lock, // TODO: Code
-                    onClick = onNavigateToTestSettings
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
+
             // About section
             SettingsSection("About") {
                 SettingItem(
