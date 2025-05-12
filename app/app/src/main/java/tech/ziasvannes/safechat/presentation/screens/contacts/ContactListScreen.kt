@@ -40,11 +40,13 @@ import tech.ziasvannes.safechat.presentation.components.SearchTextField
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactListScreen(
+fun ContactListScreen(
         onNavigateToChat: (chatSessionId: UUID) -> Unit,
-        onNavigateToAddContact: () -> Unit,
         onNavigateToMe: () -> Unit,
-        onAddContactClick: () -> Unit,
         viewModel: ContactViewModel = hiltViewModel()
+) {
+    // …rest of implementation…
+}
 ) {
         val state by viewModel.state.collectAsStateWithLifecycle()
         val snackbarHostState = remember { SnackbarHostState() }
