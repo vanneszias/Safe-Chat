@@ -20,13 +20,31 @@ async fn main() {
     dotenv().ok();
     tracing_subscriber::fmt::init();
 
-    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let db_url = std::env::var("DATABASE_URL")
+        .map_err(|_| {
+            tracing::error!("DATABASE_URL environment variable not set");
+            std::process::exit(1);
+        })
+        .unwrap();
+
     let db = PgPoolOptions::new()
         .max_connections(5)
+        .connect_timeout(std::time::Duration::from_secs(30))
         .connect(&db_url)
         .await
-        .expect("Failed to connect to Postgres");
-    let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+        .map_err(|err| {
+            tracing::error!("Failed to connect to Postgres: {}", err);
+            std::process::exit(1);
+        })
+        .unwrap();
+
+    let jwt_secret = std::env::var("JWT_SECRET")
+        .map_err(|_| {
+            tracing::error!("JWT_SECRET environment variable not set");
+            std::process::exit(1);
+        })
+        .unwrap();
+
     let state = Arc::new(AppState { db, jwt_secret });
 
     let app = Router::new()
