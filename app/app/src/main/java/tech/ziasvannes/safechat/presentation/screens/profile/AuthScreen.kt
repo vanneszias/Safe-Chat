@@ -9,6 +9,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
+/**
+ * Displays a user authentication screen for sign-in and sign-up using Jetpack Compose.
+ *
+ * Presents input fields for username and password, allows toggling between sign-in and sign-up modes, and provides feedback for authentication errors and loading states. On successful authentication, invokes the provided callback with the authentication token.
+ *
+ * @param onAuthSuccess Callback invoked with the authentication token upon successful sign-in or sign-up.
+ */
 @Composable
 fun AuthScreen(onAuthSuccess: (token: String) -> Unit, viewModel: AuthViewModel = hiltViewModel()) {
         var username by remember { mutableStateOf("") }

@@ -31,10 +31,9 @@ interface ApiService {
 
     @GET("/profile") suspend fun getProfile(): ProfileResponse
 
-    @PUT("/profile/key") suspend fun updatePublicKey(@Body request: UpdateKeyRequest)
+    @PUT("/profile") suspend fun updateProfile(@Body request: UpdateProfileRequest)
 
-    @PUT("/profile")
-    suspend fun updateProfile(@Body request: UpdateProfileRequest)
+    @PUT("/profile/key") suspend fun updatePublicKey(@Body request: UpdateKeyRequest)
 }
 
 // Authenticated requests will have the Authorization header added by an OkHttp interceptor

@@ -8,6 +8,15 @@ import tech.ziasvannes.safechat.session.UserSession
 
 @Singleton
 class AuthInterceptor @Inject constructor(private val userSession: UserSession) : Interceptor {
+    /**
+     * Intercepts outgoing HTTP requests to add an Authorization header with a bearer token if available.
+     *
+     * If a non-null, non-blank token exists in the user session, the request is modified to include
+     * an Authorization header using the bearer token. Otherwise, the original request is sent unmodified.
+     *
+     * @param chain The OkHttp interceptor chain containing the request.
+     * @return The HTTP response from proceeding with the (possibly modified) request.
+     */
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
         val token = userSession.token

@@ -72,10 +72,9 @@ constructor(
     }
 
     /**
-     * Loads the user's profile data asynchronously and updates the UI state.
+     * Asynchronously fetches the user's profile data from the API and updates the UI state.
      *
-     * Retrieves the current public key from the encryption repository and sets the user name and
-     * loading status. If an error occurs during loading, updates the state with an error message.
+     * Sets the loading indicator while retrieving profile information. On success, updates the state with the user's ID, username, and public key. On failure, updates the state with an error message.
      */
     private fun loadProfile() {
         _state.update { it.copy(isLoading = true) }

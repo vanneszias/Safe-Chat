@@ -14,6 +14,15 @@ constructor(
         private val encryptionRepository: EncryptionRepository,
         private val userSession: UserSession
 ) {
+    /**
+     * Registers a new user with the provided username and password, updates the user session, and returns the authentication response.
+     *
+     * The user session is updated with the user's ID, public key, and authentication token from the response.
+     *
+     * @param username The username for the new account.
+     * @param password The password for the new account.
+     * @return The authentication response containing user and session details.
+     */
     suspend fun signUp(username: String, password: String): AuthResponse {
         val response = apiService.signUp(AuthRequest(username, password))
         userSession.userId = java.util.UUID.fromString(response.id)
@@ -22,6 +31,16 @@ constructor(
         return response
     }
 
+    /**
+     * Authenticates a user with the provided credentials and updates the user session.
+     *
+     * Sends a sign-in request using the given username and password. On success, stores the authentication token in the user session.
+     * Attempts to retrieve the user's profile to update the session with the user's ID and public key. If profile retrieval fails, the session will only contain the token.
+     *
+     * @param username The user's username.
+     * @param password The user's password.
+     * @return The authentication response containing the token and related data.
+     */
     suspend fun signIn(username: String, password: String): AuthResponse {
         val response = apiService.signIn(AuthRequest(username, password))
         userSession.token = response.token

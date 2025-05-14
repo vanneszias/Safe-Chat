@@ -59,6 +59,28 @@ pub struct UpdateProfileRequest {
     pub avatar: Option<String>, // base64-encoded
 }
 
+/// Handles user registration by creating a new user account with a hashed password, generating a public key, and returning a JWT token.
+///
+/// On success, returns HTTP 201 with the user's UUID, generated public key, and a JWT token. If the username already exists, returns HTTP 409 with an error message. Returns HTTP 500 for internal errors.
+///
+/// # Examples
+///
+/// ```
+/// use axum::{body::Body, http::{Request, StatusCode}};
+/// use serde_json::json;
+///
+/// // Assume `app` is your Axum router with the register route.
+/// let payload = json!({ "username": "alice", "password": "securepass" });
+/// let req = Request::builder()
+///     .method("POST")
+///     .uri("/register")
+///     .header("content-type", "application/json")
+///     .body(Body::from(payload.to_string()))
+///     .unwrap();
+///
+/// let response = app.oneshot(req).await.unwrap();
+/// assert_eq!(response.status(), StatusCode::CREATED);
+/// ```
 pub async fn register(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<RegisterRequest>,
@@ -139,6 +161,22 @@ pub async fn register(
     }
 }
 
+/// Authenticates a user by verifying credentials and returns a JWT token on success.
+///
+/// Receives a username and password, verifies the credentials against the database using Argon2 password hashing,
+/// and issues a JWT token with a 24-hour expiration if authentication succeeds. Returns JSON error responses with
+/// appropriate HTTP status codes for invalid credentials, database errors, or token creation failures.
+///
+/// # Examples
+///
+/// ```
+/// // Example usage in an Axum route handler
+/// let response = login(state, Json(LoginRequest {
+///     username: "alice".to_string(),
+///     password: "password123".to_string(),
+/// })).await;
+/// // On success, response contains a JSON object with a "token" field.
+/// ```
 pub async fn login(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<LoginRequest>,
@@ -240,6 +278,25 @@ pub async fn login(
         .into_response()
 }
 
+/// Retrieves the authenticated user's profile information using a JWT bearer token.
+///
+/// Extracts the user ID from the provided JWT in the `Authorization` header, queries the database for the user's profile, and returns the profile data as JSON. Returns appropriate HTTP status codes for missing or invalid tokens, user not found, or database errors.
+///
+/// # Examples
+///
+/// ```
+/// // Example request using reqwest (assuming server is running and token is valid)
+/// let client = reqwest::Client::new();
+/// let res = client
+///     .get("http://localhost:3000/profile")
+///     .bearer_auth("your_jwt_token_here")
+///     .send()
+///     .await
+///     .unwrap();
+/// assert_eq!(res.status(), 200);
+/// let profile: serde_json::Value = res.json().await.unwrap();
+/// assert!(profile.get("username").is_some());
+/// ```
 pub async fn get_profile(State(state): State<Arc<AppState>>, req: Request) -> impl IntoResponse {
     // Extract Authorization header
     let auth_header = req
@@ -305,6 +362,20 @@ pub async fn get_profile(State(state): State<Arc<AppState>>, req: Request) -> im
     }
 }
 
+/// Updates the authenticated user's public key.
+///
+/// Extracts the user's UUID from a JWT in the `Authorization` header, reads the new public key from the request body, and updates it in the database. Returns an appropriate HTTP response based on the outcome.
+///
+/// # Examples
+///
+/// ```
+/// // Example request (pseudo-code):
+/// // PUT /update_public_key
+/// // Authorization: Bearer <jwt>
+/// // Body: { "public_key": "base64string" }
+/// let response = update_public_key(state, request).await;
+/// assert_eq!(response.status(), StatusCode::OK);
+/// ```
 pub async fn update_public_key(
     State(state): State<Arc<AppState>>,
     req: Request,
