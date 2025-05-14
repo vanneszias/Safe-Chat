@@ -38,13 +38,13 @@ constructor(
     }
 
     /**
-     * Handles profile-related events and updates the profile state accordingly.
+     * Processes profile-related events and updates the profile state based on the event type.
      *
-     * Processes events such as loading the profile, toggling edit mode, updating the user name,
-     * saving changes, selecting an avatar, toggling public key visibility, generating a new key
-     * pair, and clearing errors.
+     * Handles actions such as loading profile data, toggling edit mode, updating the username,
+     * saving changes, selecting a new avatar, toggling public key visibility, generating a new key pair,
+     * and clearing error messages.
      *
-     * @param event The profile event to handle.
+     * @param event The profile event to process.
      */
     open fun onEvent(event: ProfileEvent) {
         when (event) {
@@ -135,13 +135,11 @@ constructor(
     }
 
     /**
-     * Updates the user's avatar in the profile state using the provided image URI.
+     * Updates the user's avatar in the profile state by converting the provided image URI to a base64-encoded string.
      *
-     * Converts the given URI to a base64 string (currently a placeholder) and updates the avatar
-     * URL in the state. If an error occurs during processing, updates the state with an error
-     * message.
+     * If the image is successfully encoded, the avatar URL in the state is updated; otherwise, an error message is set.
      *
-     * @param context The application context.
+     * @param context The context used to access image decoding resources.
      * @param uri The URI of the selected avatar image.
      */
     private fun updateAvatar(context: Context, uri: Uri) {
@@ -163,10 +161,9 @@ constructor(
     }
 
     /**
-     * Asynchronously generates a new encryption key pair and updates the profile state with the new
-     * public key.
+     * Generates a new encryption key pair and updates the user's public key in both the backend and local profile state.
      *
-     * If key generation fails, updates the state with an error message.
+     * Sets an error message in the profile state if key generation or backend update fails.
      */
     private fun generateNewKeyPair() {
         _state.update { it.copy(isLoading = true) }
@@ -191,6 +188,16 @@ constructor(
         }
     }
 
+    /**
+     * Converts an image URI to a base64-encoded JPEG string.
+     *
+     * Loads the image referenced by the given URI, compresses it to JPEG format at 90% quality,
+     * and encodes the resulting byte array as a base64 string without line wraps.
+     *
+     * @param context The context used to access the content resolver.
+     * @param uri The URI of the image to convert.
+     * @return The base64-encoded JPEG string, or null if the conversion fails.
+     */
     private fun uriToBase64(context: Context, uri: Uri): String? {
         return try {
             val bitmap = if (Build.VERSION.SDK_INT < 28) {

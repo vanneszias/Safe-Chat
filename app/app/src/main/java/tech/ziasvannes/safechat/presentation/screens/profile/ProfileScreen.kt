@@ -55,11 +55,11 @@ import androidx.compose.ui.graphics.asImageBitmap
  */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
- * Displays the user profile screen, allowing users to view and edit their profile information, including avatar, username, user ID, and cryptographic keys.
+ * Composable screen for viewing and editing the user's profile, including avatar, username, user ID, and cryptographic keys.
  *
- * Supports toggling between view and edit modes, updating the avatar via camera or gallery, copying the user ID and public key to the clipboard, and generating a new key pair with a warning about invalidating existing encrypted conversations. Handles loading and error states, and provides navigation back via the supplied callback.
+ * Allows toggling between view and edit modes, updating the avatar via camera or gallery, copying the user ID and public key to the clipboard, and generating a new key pair with a warning about invalidating existing encrypted conversations. Handles loading and error states, and provides navigation back via the supplied callback.
  *
- * @param onNavigateBack Invoked when the user requests to navigate back from the profile screen.
+ * @param onNavigateBack Callback invoked when the user requests to navigate back from the profile screen.
  */
 @Composable
 fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
