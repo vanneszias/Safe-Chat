@@ -1,6 +1,7 @@
 package tech.ziasvannes.safechat.presentation.screens.profile
 
 import android.net.Uri
+import android.content.Context
 
 /** Events for the Profile screen */
 sealed class ProfileEvent {
@@ -17,7 +18,7 @@ sealed class ProfileEvent {
     object SaveProfile : ProfileEvent()
 
     /** Select a new avatar image */
-    data class OnAvatarSelected(val uri: Uri) : ProfileEvent()
+    data class OnAvatarSelected(val context: Context, val uri: Uri) : ProfileEvent()
 
     /** Toggle public key visibility */
     object ToggleKeyVisibility : ProfileEvent()

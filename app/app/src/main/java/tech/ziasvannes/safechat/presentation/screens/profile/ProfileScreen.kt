@@ -3,8 +3,10 @@ package tech.ziasvannes.safechat.presentation.screens.profile
 import android.Manifest
 import android.content.ContentValues
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Base64
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,12 +35,13 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import androidx.compose.foundation.Image
 import tech.ziasvannes.safechat.R
 import tech.ziasvannes.safechat.presentation.components.CustomTextField
 import tech.ziasvannes.safechat.presentation.components.LoadingDialog
 import tech.ziasvannes.safechat.presentation.preview.PreviewProfileViewModel
 import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
+import androidx.compose.ui.graphics.asImageBitmap
 
 /**
  * Displays the user profile screen with editable profile information and security key management.
@@ -71,16 +74,15 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
 
         // Camera launcher
         val cameraLauncher =
-                rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success
-                        ->
+                rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
                         if (success && tempCameraUri != null) {
-                                viewModel.onEvent(ProfileEvent.OnAvatarSelected(tempCameraUri!!))
+                                viewModel.onEvent(ProfileEvent.OnAvatarSelected(context, tempCameraUri!!))
                         }
                 }
         // Gallery launcher
         val galleryLauncher =
                 rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-                        uri?.let { viewModel.onEvent(ProfileEvent.OnAvatarSelected(it)) }
+                        uri?.let { viewModel.onEvent(ProfileEvent.OnAvatarSelected(context, it)) }
                 }
 
         // Permission launcher (for camera)
@@ -197,25 +199,28 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
                                 contentAlignment = Alignment.Center
                         ) {
                                 if (!state.avatarUrl.isNullOrBlank()) {
-                                        AsyncImage(
-                                                model = state.avatarUrl,
-                                                contentDescription = "Profile avatar",
-                                                modifier = Modifier.size(120.dp).clip(CircleShape),
-                                                placeholder =
-                                                        painterResource(
-                                                                id =
-                                                                        android.R
-                                                                                .drawable
-                                                                                .ic_menu_gallery
-                                                        ),
-                                                error =
-                                                        painterResource(
-                                                                id =
-                                                                        android.R
-                                                                                .drawable
-                                                                                .ic_menu_report_image
-                                                        )
-                                        )
+                                        val imageBitmap = remember(state.avatarUrl) {
+                                                try {
+                                                        val decodedBytes = Base64.decode(state.avatarUrl, Base64.DEFAULT)
+                                                        BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)?.asImageBitmap()
+                                                } catch (e: Exception) {
+                                                        null
+                                                }
+                                        }
+                                        if (imageBitmap != null) {
+                                                Image(
+                                                        bitmap = imageBitmap,
+                                                        contentDescription = "Profile avatar",
+                                                        modifier = Modifier.size(120.dp).clip(CircleShape)
+                                                )
+                                        } else {
+                                                Icon(
+                                                        imageVector = Icons.Default.Person,
+                                                        contentDescription = "Profile avatar",
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.size(64.dp)
+                                                )
+                                        }
                                 } else {
                                         Icon(
                                                 imageVector = Icons.Default.Person,
