@@ -6,6 +6,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Network state permission to check connectivity -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Camera and storage permissions for profile picture picker -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <application
         android:name="tech.ziasvannes.safechat.SafeChatApplication"
