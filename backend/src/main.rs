@@ -2,7 +2,7 @@ mod auth;
 mod crypto;
 mod state;
 
-use auth::{get_profile, login, register, update_public_key};
+use auth::{get_profile, login, register, update_profile, update_public_key};
 use axum::{Router, routing::get};
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
@@ -34,6 +34,7 @@ async fn main() {
         .route("/auth/register", axum::routing::post(register))
         .route("/auth/login", axum::routing::post(login))
         .route("/profile", axum::routing::get(get_profile))
+        .route("/profile", axum::routing::put(update_profile))
         .route("/profile/key", axum::routing::put(update_public_key))
         .with_state(state);
 

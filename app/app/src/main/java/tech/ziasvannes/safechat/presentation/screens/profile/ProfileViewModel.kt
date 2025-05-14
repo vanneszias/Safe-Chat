@@ -4,16 +4,15 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import tech.ziasvannes.safechat.data.models.Contact
 import tech.ziasvannes.safechat.data.remote.ApiService
 import tech.ziasvannes.safechat.data.remote.ProfileResponse
+import tech.ziasvannes.safechat.data.remote.UpdateProfileRequest
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 
 @HiltViewModel
@@ -89,7 +88,7 @@ constructor(
                             userId = profile.id,
                             userName = profile.username,
                             userPublicKey = profile.public_key,
-                            avatarUrl = null, // Update if backend supports avatar
+                            avatarUrl = profile.avatar, // base64 string
                             isLoading = false
                     )
                 }
@@ -113,17 +112,12 @@ constructor(
 
         viewModelScope.launch {
             try {
-                val selfId = UUID.fromString("00000000-0000-0000-0000-000000000000")
-                val contact =
-                        Contact(
-                                id = selfId,
-                                name = state.value.userName,
-                                publicKey = state.value.userPublicKey,
-                                lastSeen = System.currentTimeMillis(),
-                                status = tech.ziasvannes.safechat.data.models.ContactStatus.ONLINE,
-                                avatarUrl = state.value.avatarUrl
+                apiService.updateProfile(
+                        UpdateProfileRequest(
+                                username = state.value.userName,
+                                avatar = state.value.avatarUrl
                         )
-                // contactRepository.updateContact(contact)
+                )
                 _state.update { it.copy(isLoading = false, isEditMode = false) }
             } catch (e: Exception) {
                 _state.update {
@@ -146,11 +140,10 @@ constructor(
 
         viewModelScope.launch {
             try {
-                // In a real app, this would upload the image to storage
-                // For now, we'll simulate processing with a delay
-                kotlinx.coroutines.delay(500)
-
-                _state.update { it.copy(avatarUrl = uri.toString(), isLoading = false) }
+                // Convert image to base64 string (simulate for now)
+                // In a real app, load the image and encode as base64
+                val base64 = uri.toString() // TODO: Replace with actual base64 encoding
+                _state.update { it.copy(avatarUrl = base64, isLoading = false) }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(isLoading = false, error = e.message ?: "Failed to update avatar")
