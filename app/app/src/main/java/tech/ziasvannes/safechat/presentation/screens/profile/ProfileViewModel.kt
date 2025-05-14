@@ -4,17 +4,24 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.UUID
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import tech.ziasvannes.safechat.data.models.Contact
+import tech.ziasvannes.safechat.data.remote.ApiService
+import tech.ziasvannes.safechat.data.remote.ProfileResponse
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
-import javax.inject.Inject
 
 @HiltViewModel
-open class ProfileViewModel @Inject constructor(
-    private val encryptionRepository: EncryptionRepository
+open class ProfileViewModel
+@Inject
+constructor(
+        private val apiService: ApiService,
+        private val encryptionRepository: EncryptionRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileState())
@@ -74,18 +81,13 @@ open class ProfileViewModel @Inject constructor(
         
         viewModelScope.launch {
             try {
-                // In a real app, this would come from a user repository
-                // For now, we'll simulate loading profile data with a delay
-                kotlinx.coroutines.delay(500)
-                
-                // Get the public key from the encryption repository
-                val publicKey = encryptionRepository.getCurrentPublicKey() ?: "No key available"
-                
+                val profile: ProfileResponse = apiService.getProfile()
                 _state.update {
                     it.copy(
-                        userName = "Current User",  // This would come from user preferences
-                        userPublicKey = publicKey,
-                        isLoading = false
+                            userName = profile.username,
+                            userPublicKey = profile.public_key,
+                            avatarUrl = null, // Update if backend supports avatar
+                            isLoading = false
                     )
                 }
             } catch (e: Exception) {
@@ -109,16 +111,18 @@ open class ProfileViewModel @Inject constructor(
         
         viewModelScope.launch {
             try {
-                // In a real app, this would save to a user repository
-                // For now, we'll simulate saving with a delay
-                kotlinx.coroutines.delay(500)
-                
-                _state.update {
-                    it.copy(
-                        isLoading = false,
-                        isEditMode = false
-                    )
-                }
+                val selfId = UUID.fromString("00000000-0000-0000-0000-000000000000")
+                val contact =
+                        Contact(
+                                id = selfId,
+                                name = state.value.userName,
+                                publicKey = state.value.userPublicKey,
+                                lastSeen = System.currentTimeMillis(),
+                                status = tech.ziasvannes.safechat.data.models.ContactStatus.ONLINE,
+                                avatarUrl = state.value.avatarUrl
+                        )
+                // contactRepository.updateContact(contact)
+                _state.update { it.copy(isLoading = false, isEditMode = false) }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
@@ -175,13 +179,11 @@ open class ProfileViewModel @Inject constructor(
             try {
                 // Generate new keys
                 val newPublicKey = encryptionRepository.generateNewKeyPair()
-                
-                _state.update {
-                    it.copy(
-                        userPublicKey = newPublicKey,
-                        isLoading = false
-                    )
-                }
+                // Update backend
+                apiService.updatePublicKey(
+                        tech.ziasvannes.safechat.data.remote.UpdateKeyRequest(newPublicKey)
+                )
+                _state.update { it.copy(userPublicKey = newPublicKey, isLoading = false) }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(

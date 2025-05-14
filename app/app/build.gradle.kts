@@ -24,8 +24,8 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
             )
         }
     }
@@ -37,34 +37,24 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+    kotlinOptions { jvmTarget = "11" }
 
-    buildFeatures {
-        compose = true
-    }
+    buildFeatures { compose = true }
 
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14" // Set according to your BOM if needed
     }
 
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
+    packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
 }
 
 // Configure Hilt for better compatibility
-hilt {
-    enableAggregatingTask = true
-}
+hilt { enableAggregatingTask = true }
 
 dependencies {
     // Desugaring for Java compatibility
     coreLibraryDesugaring(libs.android.desugarJdkLibs)
-    
+
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
@@ -99,4 +89,8 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    // Retrofit
+    implementation(libs.retrofit2)
+    implementation(libs.retrofit2.converter.gson)
 }

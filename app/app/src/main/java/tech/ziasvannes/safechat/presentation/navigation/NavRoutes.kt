@@ -10,7 +10,8 @@ object NavRoutes {
     const val SETTINGS = "settings"
     const val ADD_CONTACT = "add_contact"
     const val TEST_SETTINGS = "test_settings"
-    
+    const val AUTH = "auth"
+
     /**
      * Returns the navigation route for a chat screen with the specified contact ID.
      *
