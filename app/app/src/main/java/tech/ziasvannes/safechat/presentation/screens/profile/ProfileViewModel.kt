@@ -72,9 +72,9 @@ constructor(
     }
 
     /**
-     * Asynchronously fetches the user's profile data from the API and updates the UI state.
+     * Loads the user's profile data from the API and updates the UI state.
      *
-     * Sets the loading indicator while retrieving profile information. On success, updates the state with the user's ID, username, and public key. On failure, updates the state with an error message.
+     * Initiates an asynchronous request to fetch the user's profile, including ID, username, public key, and avatar (as a base64 string). Updates the state to reflect loading, success, or error conditions.
      */
     private fun loadProfile() {
         _state.update { it.copy(isLoading = true) }
@@ -100,11 +100,9 @@ constructor(
     }
 
     /**
-     * Persists the current profile changes and updates the UI state to reflect saving progress and
-     * completion.
+     * Saves the current user profile changes to the backend and updates the UI state accordingly.
      *
-     * Sets the loading indicator while saving, disables edit mode upon success, and updates the
-     * error state if saving fails.
+     * Sets a loading indicator during the save operation, disables edit mode on success, and updates the error state if the save fails.
      */
     private fun saveProfile() {
         _state.update { it.copy(isLoading = true) }
@@ -127,10 +125,10 @@ constructor(
     }
 
     /**
-     * Updates the user's avatar by setting the avatar URL in the profile state.
+     * Updates the user's avatar in the profile state using the provided image URI.
      *
-     * Simulates avatar processing and updates the state with the new avatar URL or an error message
-     * if the operation fails.
+     * Converts the given URI to a base64 string (currently a placeholder) and updates the avatar URL in the state.
+     * If an error occurs during processing, updates the state with an error message.
      *
      * @param uri The URI of the selected avatar image.
      */

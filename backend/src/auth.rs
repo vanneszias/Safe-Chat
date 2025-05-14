@@ -296,8 +296,23 @@ pub async fn login(
 /// assert_eq!(res.status(), 200);
 /// let profile: serde_json::Value = res.json().await.unwrap();
 /// assert!(profile.get("username").is_some());
+/// Retrieves the authenticated user's profile information.
+///
+/// Extracts and validates the JWT from the `Authorization` header, then queries the database for the user's profile fields, including ID, username, public key, creation timestamp, and optional base64-encoded avatar. Returns the profile as a JSON response or an appropriate error if authentication fails or the user is not found.
+///
+/// # Examples
+///
 /// ```
-pub async fn get_profile(State(state): State<Arc<AppState>>, req: Request) -> impl IntoResponse {
+/// // Example request using an authenticated client:
+/// let response = client
+///     .get("/profile")
+///     .bearer_auth("valid_jwt_token")
+///     .send()
+///     .await;
+/// assert_eq!(response.status(), 200);
+/// let profile: UserProfile = response.json().await.unwrap();
+/// assert_eq!(profile.username, "alice");
+/// ```pub async fn get_profile(State(state): State<Arc<AppState>>, req: Request) -> impl IntoResponse {
     // Extract Authorization header
     let auth_header = req
         .headers()
@@ -375,8 +390,18 @@ pub async fn get_profile(State(state): State<Arc<AppState>>, req: Request) -> im
 /// // Body: { "public_key": "base64string" }
 /// let response = update_public_key(state, request).await;
 /// assert_eq!(response.status(), StatusCode::OK);
+/// Updates the authenticated user's public key.
+///
+/// Extracts and validates the JWT from the `Authorization` header, parses the JSON body for the new public key, and updates the user's public key in the database. Returns an appropriate HTTP response based on the outcome.
+///
+/// # Examples
+///
 /// ```
-pub async fn update_public_key(
+/// // Example request using an HTTP client:
+/// // PATCH /api/profile/key
+/// // Authorization: Bearer <token>
+/// // Body: { "public_key": "base64-encoded-key" }
+/// ```pub async fn update_public_key(
     State(state): State<Arc<AppState>>,
     req: Request,
 ) -> impl IntoResponse {
@@ -438,6 +463,24 @@ pub async fn update_public_key(
     }
 }
 
+/// Updates the authenticated user's profile fields, such as username and avatar.
+///
+/// Accepts a JSON body with optional `username` and/or base64-encoded `avatar` fields. Requires a valid JWT bearer token in the `Authorization` header. Returns an error if no fields are provided, the avatar encoding is invalid, or the token is missing or invalid.
+///
+/// # Examples
+///
+/// ```
+/// // Example request using reqwest (pseudo-code)
+/// let client = reqwest::Client::new();
+/// let res = client
+///     .post("http://localhost:3000/profile")
+///     .bearer_auth("your_jwt_token")
+///     .json(&serde_json::json!({ "username": "newname", "avatar": "base64string" }))
+///     .send()
+///     .await
+///     .unwrap();
+/// assert_eq!(res.status(), 200);
+/// ```
 pub async fn update_profile(State(state): State<Arc<AppState>>, req: Request) -> impl IntoResponse {
     // Extract Authorization header
     let auth_header = req

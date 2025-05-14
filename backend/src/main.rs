@@ -16,6 +16,7 @@ async fn health_check() -> impl axum::response::IntoResponse {
 }
 
 #[tokio::main]
+/// ```
 async fn main() {
     dotenv().ok();
     tracing_subscriber::fmt::init();
