@@ -43,6 +43,13 @@ import java.security.PublicKey
  * @param onNavigateBack Callback invoked when the user requests to navigate back.
  */
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Displays the user profile screen, allowing users to view and edit their profile information and manage security keys.
+ *
+ * Presents the user's avatar, username, and user ID, with options to edit the profile, copy the user ID, and manage cryptographic keys. Includes UI for toggling between view and edit modes, copying sensitive data to the clipboard, and generating new key pairs with appropriate warnings.
+ *
+ * @param onNavigateBack Callback invoked when the user requests to navigate back.
+ */
 @Composable
 fun ProfileScreen(
     onNavigateBack: () -> Unit,
@@ -315,7 +322,15 @@ fun ProfileScreen(
     }
 }
 
-// Helper function to format UUID in 8-4-4-4-12 style
+/**
+ * Formats a UUID string into the standard 8-4-4-4-12 dashed pattern.
+ *
+ * If the input string contains 32 hexadecimal characters (with or without dashes), returns it in canonical UUID format (e.g., "123e4567-e89b-12d3-a456-426614174000").
+ * If the input does not match the expected length, returns it unchanged.
+ *
+ * @param uuid The UUID string to format.
+ * @return The formatted UUID string, or the original string if formatting is not possible.
+ */
 fun formatUuid(uuid: String): String {
     val clean = uuid.replace("-", "")
     return if (clean.length == 32) {
