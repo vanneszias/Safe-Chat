@@ -14,6 +14,13 @@ import tech.ziasvannes.safechat.data.remote.ApiService
 import tech.ziasvannes.safechat.data.remote.ProfileResponse
 import tech.ziasvannes.safechat.data.remote.UpdateProfileRequest
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.os.Build
+import android.provider.MediaStore
+import java.io.ByteArrayOutputStream
+import android.util.Base64
 
 @HiltViewModel
 open class ProfileViewModel
@@ -54,7 +61,7 @@ constructor(
                 saveProfile()
             }
             is ProfileEvent.OnAvatarSelected -> {
-                updateAvatar(event.uri)
+                updateAvatar(event.context, event.uri)
             }
             is ProfileEvent.ToggleKeyVisibility -> {
                 _state.update { it.copy(isKeyVisible = !it.isKeyVisible) }
@@ -134,17 +141,19 @@ constructor(
      * URL in the state. If an error occurs during processing, updates the state with an error
      * message.
      *
+     * @param context The application context.
      * @param uri The URI of the selected avatar image.
      */
-    private fun updateAvatar(uri: Uri) {
+    private fun updateAvatar(context: Context, uri: Uri) {
         _state.update { it.copy(isLoading = true) }
-
         viewModelScope.launch {
             try {
-                // Convert image to base64 string (simulate for now)
-                // In a real app, load the image and encode as base64
-                val base64 = uri.toString() // TODO: Replace with actual base64 encoding
-                _state.update { it.copy(avatarUrl = base64, isLoading = false) }
+                val base64 = uriToBase64(context, uri)
+                if (base64 != null) {
+                    _state.update { it.copy(avatarUrl = base64, isLoading = false) }
+                } else {
+                    _state.update { it.copy(isLoading = false, error = "Failed to encode image") }
+                }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(isLoading = false, error = e.message ?: "Failed to update avatar")
@@ -179,6 +188,23 @@ constructor(
                     )
                 }
             }
+        }
+    }
+
+    private fun uriToBase64(context: Context, uri: Uri): String? {
+        return try {
+            val bitmap = if (Build.VERSION.SDK_INT < 28) {
+                MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+            } else {
+                val source = ImageDecoder.createSource(context.contentResolver, uri)
+                ImageDecoder.decodeBitmap(source)
+            }
+            val outputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+            val byteArray = outputStream.toByteArray()
+            Base64.encodeToString(byteArray, Base64.NO_WRAP)
+        } catch (e: Exception) {
+            null
         }
     }
 }
