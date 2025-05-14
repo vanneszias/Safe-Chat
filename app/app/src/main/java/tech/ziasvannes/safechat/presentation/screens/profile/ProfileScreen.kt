@@ -40,9 +40,9 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
- * Displays the user profile screen, allowing users to view and edit their profile information and manage security keys.
+ * Composable screen for viewing and editing user profile information, including username, avatar, user ID, and cryptographic keys.
  *
- * Presents the user's avatar, username, and user ID, with options to edit the profile, copy the user ID, and manage cryptographic keys. Includes UI for toggling between view and edit modes, copying sensitive data to the clipboard, and generating new key pairs with appropriate warnings.
+ * Allows toggling between view and edit modes, copying the user ID and public key to the clipboard, and generating a new key pair with a warning about invalidating existing encrypted conversations. Displays loading and error states as appropriate.
  *
  * @param onNavigateBack Callback invoked when the user requests to navigate back.
  */
@@ -440,13 +440,12 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
 }
 
 /**
- * Formats a UUID string into the standard 8-4-4-4-12 dashed pattern.
+ * Returns the input string formatted as a canonical UUID (8-4-4-4-12 dashed pattern) if possible.
  *
- * If the input string contains 32 hexadecimal characters (with or without dashes), returns it in canonical UUID format (e.g., "123e4567-e89b-12d3-a456-426614174000").
- * If the input does not match the expected length, returns it unchanged.
+ * If the input contains exactly 32 hexadecimal characters (with or without dashes), it is reformatted to the standard UUID pattern. Otherwise, the original string is returned unchanged.
  *
- * @param uuid The UUID string to format.
- * @return The formatted UUID string, or the original string if formatting is not possible.
+ * @param uuid The string to format as a UUID.
+ * @return The formatted UUID string, or the original input if it cannot be formatted.
  */
 fun formatUuid(uuid: String): String {
         val clean = uuid.replace("-", "")
@@ -456,8 +455,9 @@ fun formatUuid(uuid: String): String {
 }
 
 /**
- * Displays a preview of the ProfileScreen composable with mock data and theming for design-time
- * inspection.
+ * Renders a design-time preview of the ProfileScreen composable using mock data and app theming.
+ *
+ * Intended for use in IDE previews to visualize the profile UI layout and appearance.
  */
 @Preview(showBackground = true)
 @Composable
