@@ -8,4 +8,5 @@ import javax.inject.Singleton
 class UserSession @Inject constructor() {
     var userId: UUID? = null
     var userPublicKey: String? = null
-} 
+    var token: String? = null
+}

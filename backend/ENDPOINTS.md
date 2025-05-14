@@ -21,7 +21,14 @@
   }
   ```
 - **Response:**
-  - `201 Created` with body: `User registered. Public key: <base64_public_key>`
+  - `201 Created` with body:
+    ```json
+    {
+      "id": "uuid-string",
+      "public_key": "string",
+      "token": "jwt_token"
+    }
+    ```
   - `409 Conflict` if username already exists
   - `500 Internal Server Error` for other errors
 

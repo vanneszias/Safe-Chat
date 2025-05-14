@@ -86,6 +86,7 @@ constructor(
                 val profile: ProfileResponse = apiService.getProfile()
                 _state.update {
                     it.copy(
+                            userId = profile.id,
                             userName = profile.username,
                             userPublicKey = profile.public_key,
                             avatarUrl = null, // Update if backend supports avatar

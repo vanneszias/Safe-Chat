@@ -27,3 +27,5 @@ interface ApiService {
 
     @PUT("/profile/key") suspend fun updatePublicKey(@Body request: UpdateKeyRequest)
 }
+
+// Authenticated requests will have the Authorization header added by an OkHttp interceptor
