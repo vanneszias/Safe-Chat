@@ -52,14 +52,11 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
- * Composable screen for viewing and editing user profile information, including username, avatar,
- * user ID, and cryptographic keys.
+ * Displays the user profile screen, allowing users to view and edit their profile information, including avatar, username, user ID, and cryptographic keys.
  *
- * Allows toggling between view and edit modes, copying the user ID and public key to the clipboard,
- * and generating a new key pair with a warning about invalidating existing encrypted conversations.
- * Displays loading and error states as appropriate.
+ * Supports toggling between view and edit modes, updating the avatar via camera or gallery, copying the user ID and public key to the clipboard, and generating a new key pair with a warning about invalidating existing encrypted conversations. Handles loading and error states, and provides navigation back via the supplied callback.
  *
- * @param onNavigateBack Callback invoked when the user requests to navigate back.
+ * @param onNavigateBack Invoked when the user requests to navigate back from the profile screen.
  */
 @Composable
 fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
@@ -585,13 +582,12 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
 }
 
 /**
- * Returns the input string formatted as a canonical UUID (8-4-4-4-12 dashed pattern) if possible.
+ * Formats a string as a canonical UUID (8-4-4-4-12 dashed pattern) if it contains exactly 32 hexadecimal characters.
  *
- * If the input contains exactly 32 hexadecimal characters (with or without dashes), it is
- * reformatted to the standard UUID pattern. Otherwise, the original string is returned unchanged.
+ * If the input string, after removing dashes, has 32 characters, it is reformatted as a standard UUID. Otherwise, the original string is returned.
  *
- * @param uuid The string to format as a UUID.
- * @return The formatted UUID string, or the original input if it cannot be formatted.
+ * @param uuid The string to attempt to format as a UUID.
+ * @return The formatted UUID string, or the original input if formatting is not possible.
  */
 fun formatUuid(uuid: String): String {
         val clean = uuid.replace("-", "")
@@ -600,6 +596,14 @@ fun formatUuid(uuid: String): String {
         } else uuid
 }
 
+/**
+ * Creates a new content URI for storing a JPEG image in the external media store.
+ *
+ * The generated URI can be used as a destination for capturing a photo with the camera.
+ *
+ * @param context The context used to access the content resolver.
+ * @return A URI for the new image, or null if the insertion fails.
+ */
 fun createImageUri(context: android.content.Context): Uri? {
         val contentResolver = context.contentResolver
         val contentValues =
