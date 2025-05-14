@@ -18,11 +18,13 @@ constructor(
         val response = apiService.signUp(AuthRequest(username, password))
         userSession.userId = java.util.UUID.fromString(response.id)
         userSession.userPublicKey = response.public_key
+        userSession.token = response.token
         return response
     }
 
     suspend fun signIn(username: String, password: String): AuthResponse {
         val response = apiService.signIn(AuthRequest(username, password))
+        userSession.token = response.token
         // After login, fetch profile to get id and public_key
         try {
             val profile = apiService.getProfile()

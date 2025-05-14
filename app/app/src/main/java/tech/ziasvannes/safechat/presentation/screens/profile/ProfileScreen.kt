@@ -171,6 +171,23 @@ fun ProfileScreen(
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
+                Spacer(modifier = Modifier.height(4.dp))
+                if (state.userId.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val formattedUuid = formatUuid(state.userId)
+                        Text(
+                            text = "ID: $formattedUuid",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        IconButton(onClick = {
+                            clipboardManager.setText(AnnotatedString(state.userId))
+                            Toast.makeText(context, "User ID copied to clipboard", Toast.LENGTH_SHORT).show()
+                        }) {
+                            Icon(Icons.Default.FavoriteBorder, contentDescription = "Copy ID") // TODO ContentCopy
+                        }
+                    }
+                }
             }
             
             Spacer(modifier = Modifier.height(32.dp))
@@ -222,6 +239,7 @@ fun ProfileScreen(
                         
                         // Public key display
                         if (state.isKeyVisible) {
+                            val displayKey = state.userPublicKey.replace("/", "").chunked(4).joinToString("-")
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -236,13 +254,11 @@ fun ProfileScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = state.userPublicKey,
+                                        text = displayKey,
                                         style = MaterialTheme.typography.bodyMedium,
                                         modifier = Modifier.weight(1f)
                                     )
-                                    
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    
                                     IconButton(
                                         onClick = {
                                             clipboardManager.setText(AnnotatedString(state.userPublicKey))
@@ -251,7 +267,7 @@ fun ProfileScreen(
                                         }
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Add, // TODO ContentCopy
+                                            imageVector = Icons.Default.FavoriteBorder, // TODO ContentCopy
                                             contentDescription = "Copy public key"
                                         )
                                     }
@@ -297,6 +313,14 @@ fun ProfileScreen(
             }
         }
     }
+}
+
+// Helper function to format UUID in 8-4-4-4-12 style
+fun formatUuid(uuid: String): String {
+    val clean = uuid.replace("-", "")
+    return if (clean.length == 32) {
+        "${clean.substring(0,8)}-${clean.substring(8,12)}-${clean.substring(12,16)}-${clean.substring(16,20)}-${clean.substring(20)}"
+    } else uuid
 }
 
 /**
