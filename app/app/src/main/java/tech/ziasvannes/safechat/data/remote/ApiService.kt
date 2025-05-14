@@ -13,10 +13,16 @@ data class ProfileResponse(
         val id: String,
         val username: String,
         val public_key: String,
-        val created_at: String
+        val created_at: String,
+        val avatar: String? = null // base64-encoded
 )
 
 data class UpdateKeyRequest(val public_key: String)
+
+data class UpdateProfileRequest(
+    val username: String? = null,
+    val avatar: String? = null // base64-encoded
+)
 
 interface ApiService {
     @POST("/auth/register") suspend fun signUp(@Body request: AuthRequest): AuthResponse
@@ -25,14 +31,9 @@ interface ApiService {
 
     @GET("/profile") suspend fun getProfile(): ProfileResponse
 
-    /**
- * Updates the current user's public key.
- *
- * Sends a PUT request to update the user's public key with the provided value.
- *
- * @param request Contains the new public key to be set.
- */
-@PUT("/profile/key") suspend fun updatePublicKey(@Body request: UpdateKeyRequest)
+    @PUT("/profile") suspend fun updateProfile(@Body request: UpdateProfileRequest)
+
+    @PUT("/profile/key") suspend fun updatePublicKey(@Body request: UpdateKeyRequest)
 }
 
 // Authenticated requests will have the Authorization header added by an OkHttp interceptor

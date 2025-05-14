@@ -68,6 +68,13 @@
   - `401 Unauthorized` if token is missing or invalid
   - `404 Not Found` if user not found
 
+### Update Profile
+
+- `PUT /profile` — Update the user's profile (username and/or avatar)
+  - Request body: `{ "username": "newname", "avatar": "<base64>" }` (both optional)
+  - Requires Authorization header
+  - Updates the username and/or avatar (binary, base64-encoded)
+
 ---
 
 ## Notes

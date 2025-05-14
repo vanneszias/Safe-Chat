@@ -9,11 +9,13 @@ use axum::{
     http::header::AUTHORIZATION,
     response::IntoResponse,
 };
+use base64;
 use chrono::{DateTime, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
+use sqlx::Postgres;
 use sqlx::Row;
 use sqlx::types::Uuid;
 use std::sync::Arc;
@@ -43,11 +45,18 @@ pub struct UserProfile {
     pub username: String,
     pub public_key: String,
     pub created_at: String,
+    pub avatar: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct UpdateKeyRequest {
     pub public_key: String,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateProfileRequest {
+    pub username: Option<String>,
+    pub avatar: Option<String>, // base64-encoded
 }
 
 /// Handles user registration by creating a new user account with a hashed password, generating a public key, and returning a JWT token.
@@ -320,21 +329,25 @@ pub async fn get_profile(State(state): State<Arc<AppState>>, req: Request) -> im
     let user_id = token_data.claims.sub;
     info!("Profile requested for user_id: {}", user_id);
     // Fetch user from DB (include id)
-    let row = sqlx::query("SELECT id, username, public_key, created_at FROM users WHERE id = $1")
-        .bind(user_id)
-        .fetch_optional(&state.db)
-        .await;
+    let row =
+        sqlx::query("SELECT id, username, public_key, created_at, avatar FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&state.db)
+            .await;
     match row {
         Ok(Some(record)) => {
             let id: Uuid = record.try_get("id").unwrap();
             let username: String = record.try_get("username").unwrap();
             let public_key: String = record.try_get("public_key").unwrap();
             let created_at: DateTime<Utc> = record.try_get("created_at").unwrap_or(Utc::now());
+            let avatar_bytes: Option<Vec<u8>> = record.try_get("avatar").ok();
+            let avatar = avatar_bytes.map(|bytes| base64::encode(bytes));
             let profile = UserProfile {
                 id: id.to_string(),
                 username,
                 public_key,
                 created_at: created_at.to_rfc3339(),
+                avatar,
             };
             (StatusCode::OK, Json(json!(profile))).into_response()
         }
@@ -420,6 +433,105 @@ pub async fn update_public_key(
         Ok(_) => (StatusCode::OK, "Public key updated").into_response(),
         Err(_) => {
             info!("Update key failed: database error for user '{}'", user_id);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response()
+        }
+    }
+}
+
+pub async fn update_profile(State(state): State<Arc<AppState>>, req: Request) -> impl IntoResponse {
+    // Extract Authorization header
+    let auth_header = req
+        .headers()
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok());
+    let token = match auth_header.and_then(|h| h.strip_prefix("Bearer ")) {
+        Some(t) => t,
+        None => {
+            return (
+                StatusCode::UNAUTHORIZED,
+                "Missing or invalid Authorization header",
+            )
+                .into_response();
+        }
+    };
+    // Decode JWT
+    let token_data = match decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(state.jwt_secret.as_bytes()),
+        &Validation::default(),
+    ) {
+        Ok(data) => data,
+        Err(_) => {
+            return (StatusCode::UNAUTHORIZED, "Invalid token").into_response();
+        }
+    };
+    let user_id = token_data.claims.sub;
+    // Extract JSON body
+    let bytes = match axum::body::to_bytes(req.into_body(), 64 * 1024).await {
+        Ok(b) => b,
+        Err(_) => {
+            return (StatusCode::BAD_REQUEST, "Invalid body").into_response();
+        }
+    };
+    let payload: UpdateProfileRequest = match serde_json::from_slice(&bytes) {
+        Ok(p) => p,
+        Err(_) => {
+            return (StatusCode::BAD_REQUEST, "Invalid JSON").into_response();
+        }
+    };
+    let mut set_clauses: Vec<String> = Vec::new();
+    let mut log_fields = Vec::new();
+    if payload.username.is_some() {
+        set_clauses.push("username = $1".to_string());
+        log_fields.push("username");
+    }
+    if payload.avatar.is_some() {
+        set_clauses.push(format!("avatar = ${}", set_clauses.len() + 1));
+        log_fields.push("avatar");
+    }
+    if set_clauses.is_empty() {
+        return (StatusCode::BAD_REQUEST, "No fields to update").into_response();
+    }
+    let query = format!(
+        "UPDATE users SET {} WHERE id = ${}",
+        set_clauses.join(", "),
+        set_clauses.len() + 1
+    );
+    info!(
+        "Update profile requested for user_id: {}. Fields: {:?}",
+        user_id, log_fields
+    );
+    let mut sql_query = sqlx::query(&query);
+    let mut bind_count = 1;
+    if let Some(ref username) = payload.username {
+        sql_query = sql_query.bind(username);
+        bind_count += 1;
+    }
+    if let Some(ref avatar_b64) = payload.avatar {
+        let avatar_bytes = match base64::decode(avatar_b64) {
+            Ok(bytes) => bytes,
+            Err(_) => {
+                return (StatusCode::BAD_REQUEST, "Invalid avatar encoding").into_response();
+            }
+        };
+        sql_query = sql_query.bind(avatar_bytes);
+        bind_count += 1;
+    }
+    sql_query = sql_query.bind(user_id);
+    let res = sql_query.execute(&state.db).await;
+    match res {
+        Ok(_) => {
+            info!(
+                "Profile updated for user_id: {}. Fields: {:?}",
+                user_id, log_fields
+            );
+            (StatusCode::OK, "Profile updated").into_response()
+        }
+        Err(e) => {
+            info!(
+                "Profile update failed for user_id: {}. Error: {}",
+                user_id, e
+            );
             (StatusCode::INTERNAL_SERVER_ERROR, "Database error").into_response()
         }
     }

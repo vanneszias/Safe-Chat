@@ -15,6 +15,7 @@ RUN curl https://sh.rustup.rs -sSf | bash -s -- -y \
     && cargo install sqlx-cli --no-default-features --features postgres
 COPY --from=builder /app/target/release/backend /app/backend
 COPY .env .env
+COPY migrations ./migrations
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENV PATH="/root/.cargo/bin:${PATH}"
