@@ -25,7 +25,14 @@ interface ApiService {
 
     @GET("/profile") suspend fun getProfile(): ProfileResponse
 
-    @PUT("/profile/key") suspend fun updatePublicKey(@Body request: UpdateKeyRequest)
+    /**
+ * Updates the current user's public key.
+ *
+ * Sends a PUT request to update the user's public key with the provided value.
+ *
+ * @param request Contains the new public key to be set.
+ */
+@PUT("/profile/key") suspend fun updatePublicKey(@Body request: UpdateKeyRequest)
 }
 
 // Authenticated requests will have the Authorization header added by an OkHttp interceptor
