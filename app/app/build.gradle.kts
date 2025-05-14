@@ -93,4 +93,7 @@ dependencies {
     // Retrofit
     implementation(libs.retrofit2)
     implementation(libs.retrofit2.converter.gson)
+
+    // Coil for image loading
+    implementation(libs.coil.compose)
 }

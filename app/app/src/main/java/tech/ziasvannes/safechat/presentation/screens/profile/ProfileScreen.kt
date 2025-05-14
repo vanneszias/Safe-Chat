@@ -1,6 +1,13 @@
 package tech.ziasvannes.safechat.presentation.screens.profile
 
+import android.Manifest
+import android.content.ContentValues
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,17 +19,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import tech.ziasvannes.safechat.R
 import tech.ziasvannes.safechat.presentation.components.CustomTextField
 import tech.ziasvannes.safechat.presentation.components.LoadingDialog
 import tech.ziasvannes.safechat.presentation.preview.PreviewProfileViewModel
@@ -55,6 +67,44 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
         val context = LocalContext.current
         val clipboardManager = LocalClipboardManager.current
         val snackbarHostState = remember { SnackbarHostState() }
+
+        // --- Image picker state and launchers ---
+        var showImagePickerDialog by remember { mutableStateOf(false) }
+        var tempCameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+
+        // Camera launcher
+        val cameraLauncher =
+                rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success
+                        ->
+                        if (success && tempCameraUri != null) {
+                                viewModel.onEvent(ProfileEvent.OnAvatarSelected(tempCameraUri!!))
+                        }
+                }
+        // Gallery launcher
+        val galleryLauncher =
+                rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+                        uri?.let { viewModel.onEvent(ProfileEvent.OnAvatarSelected(it)) }
+                }
+
+        // Permission launcher (for camera)
+        val cameraPermissionLauncher =
+                rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+                        granted ->
+                        if (granted) {
+                                val uri = createImageUri(context)
+                                if (uri != null) {
+                                        tempCameraUri = uri
+                                        cameraLauncher.launch(uri)
+                                }
+                        } else {
+                                Toast.makeText(
+                                                context,
+                                                "Camera permission denied",
+                                                Toast.LENGTH_SHORT
+                                        )
+                                        .show()
+                        }
+                }
 
         // Show error snackbar if there's an error
         LaunchedEffect(state.error) {
@@ -145,27 +195,38 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
                                                         CircleShape
                                                 )
                                                 .clickable(enabled = state.isEditMode) {
-                                                        // In a real app, this would launch a photo
-                                                        // picker
-                                                        // For now, we'll just show a toast
-                                                        Toast.makeText(
-                                                                        context,
-                                                                        "Photo picker would appear here",
-                                                                        Toast.LENGTH_SHORT
-                                                                )
-                                                                .show()
+                                                        showImagePickerDialog = true
                                                 },
                                 contentAlignment = Alignment.Center
                         ) {
-                                // If we have an avatar URL, we would load it here with a library
-                                // like Coil
-                                // For now, just display an icon
-                                Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = "Profile avatar",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(64.dp)
-                                )
+                                if (!state.avatarUrl.isNullOrBlank()) {
+                                        AsyncImage(
+                                                model = state.avatarUrl,
+                                                contentDescription = "Profile avatar",
+                                                modifier = Modifier.size(120.dp).clip(CircleShape),
+                                                placeholder =
+                                                        painterResource(
+                                                                id =
+                                                                        android.R
+                                                                                .drawable
+                                                                                .ic_menu_gallery
+                                                        ),
+                                                error =
+                                                        painterResource(
+                                                                id =
+                                                                        android.R
+                                                                                .drawable
+                                                                                .ic_menu_report_image
+                                                        )
+                                        )
+                                } else {
+                                        Icon(
+                                                imageVector = Icons.Default.Person,
+                                                contentDescription = "Profile avatar",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(64.dp)
+                                        )
+                                }
 
                                 // Edit badge (when in edit mode)
                                 if (state.isEditMode) {
@@ -189,6 +250,87 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
                                                 )
                                         }
                                 }
+                        }
+
+                        // --- Image Picker Dialog ---
+                        if (showImagePickerDialog) {
+                                AlertDialog(
+                                        onDismissRequest = { showImagePickerDialog = false },
+                                        title = { Text("Change Profile Picture") },
+                                        text = {
+                                                Text("Choose a method to set your profile picture.")
+                                        },
+                                        confirmButton = {
+                                                Column {
+                                                        Button(
+                                                                onClick = {
+                                                                        showImagePickerDialog =
+                                                                                false
+                                                                        val cameraPermission =
+                                                                                Manifest.permission
+                                                                                        .CAMERA
+                                                                        if (ContextCompat
+                                                                                        .checkSelfPermission(
+                                                                                                context,
+                                                                                                cameraPermission
+                                                                                        ) ==
+                                                                                        PackageManager
+                                                                                                .PERMISSION_GRANTED
+                                                                        ) {
+                                                                                val uri =
+                                                                                        createImageUri(
+                                                                                                context
+                                                                                        )
+                                                                                if (uri != null) {
+                                                                                        tempCameraUri =
+                                                                                                uri
+                                                                                        cameraLauncher
+                                                                                                .launch(
+                                                                                                        uri
+                                                                                                )
+                                                                                }
+                                                                        } else {
+                                                                                cameraPermissionLauncher
+                                                                                        .launch(
+                                                                                                cameraPermission
+                                                                                        )
+                                                                        }
+                                                                }
+                                                        ) {
+                                                                Icon(
+                                                                        Icons.Default.Favorite, // TODO PhotoCamera
+                                                                        contentDescription = null
+                                                                )
+                                                                Spacer(Modifier.width(8.dp))
+                                                                Text("Take Photo")
+                                                        }
+                                                        Spacer(Modifier.height(8.dp))
+                                                        Button(
+                                                                onClick = {
+                                                                        showImagePickerDialog =
+                                                                                false
+                                                                        galleryLauncher.launch(
+                                                                                "image/*"
+                                                                        )
+                                                                }
+                                                        ) {
+                                                                Icon(
+                                                                        Icons.Default
+                                                                                .Favorite, // TODO
+                                                                        // PhotoLibrary
+                                                                        contentDescription = null
+                                                                )
+                                                                Spacer(Modifier.width(8.dp))
+                                                                Text("Choose from Gallery")
+                                                        }
+                                                }
+                                        },
+                                        dismissButton = {
+                                                TextButton(
+                                                        onClick = { showImagePickerDialog = false }
+                                                ) { Text("Cancel") }
+                                        }
+                                )
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -456,6 +598,19 @@ fun formatUuid(uuid: String): String {
         return if (clean.length == 32) {
                 "${clean.substring(0,8)}-${clean.substring(8,12)}-${clean.substring(12,16)}-${clean.substring(16,20)}-${clean.substring(20)}"
         } else uuid
+}
+
+fun createImageUri(context: android.content.Context): Uri? {
+        val contentResolver = context.contentResolver
+        val contentValues =
+                ContentValues().apply {
+                        put(
+                                MediaStore.Images.Media.DISPLAY_NAME,
+                                "profile_${System.currentTimeMillis()}.jpg"
+                        )
+                        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                }
+        return contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
 }
 
 /**
