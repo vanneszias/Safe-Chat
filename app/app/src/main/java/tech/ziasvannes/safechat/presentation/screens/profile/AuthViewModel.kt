@@ -17,7 +17,6 @@ sealed class AuthResult {
     object Idle : AuthResult()
     object Loading : AuthResult()
     data class Success(val token: String) : AuthResult()
-    data class Registered(val message: String) : AuthResult()
     data class Error(val message: String) : AuthResult()
 }
 
@@ -37,9 +36,9 @@ constructor(
         viewModelScope.launch {
             try {
                 val response = authRepository.signUp(username, password)
-                response.id?.let { userSession.userId = UUID.fromString(it) }
-                response.public_key?.let { userSession.userPublicKey = it }
-                _authResult.value = AuthResult.Registered(response.token)
+                userSession.userId = UUID.fromString(response.id)
+                userSession.userPublicKey = response.public_key
+                _authResult.value = AuthResult.Success(response.token)
             } catch (e: Exception) {
                 _authResult.value = AuthResult.Error(e.message ?: "Unknown error")
             }

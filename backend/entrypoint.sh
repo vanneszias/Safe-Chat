@@ -9,9 +9,11 @@ fi
 # If no migration files exist, create initial migrations for users, messages, and contacts
 if [ -z "$(ls -A ./migrations/*.sql 2>/dev/null)" ]; then
   cat > ./migrations/0001_init.sql <<EOF
+-- Enable pgcrypto for UUID generation
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     public_key TEXT NOT NULL,

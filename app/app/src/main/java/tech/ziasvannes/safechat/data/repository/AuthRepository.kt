@@ -16,8 +16,8 @@ constructor(
 ) {
     suspend fun signUp(username: String, password: String): AuthResponse {
         val response = apiService.signUp(AuthRequest(username, password))
-        response.id?.let { userSession.userId = java.util.UUID.fromString(it) }
-        response.public_key?.let { userSession.userPublicKey = it }
+        userSession.userId = java.util.UUID.fromString(response.id)
+        userSession.userPublicKey = response.public_key
         return response
     }
 
