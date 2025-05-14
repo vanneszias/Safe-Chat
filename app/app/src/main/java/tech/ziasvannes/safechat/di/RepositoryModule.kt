@@ -34,6 +34,7 @@ object RepositoryModule {
     @Singleton
     fun provideAuthRepository(
             apiService: tech.ziasvannes.safechat.data.remote.ApiService,
-            encryptionRepository: EncryptionRepository
-    ): AuthRepository = AuthRepository(apiService, encryptionRepository)
+            encryptionRepository: EncryptionRepository,
+            userSession: tech.ziasvannes.safechat.session.UserSession
+    ): AuthRepository = AuthRepository(apiService, encryptionRepository, userSession)
 }
