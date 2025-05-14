@@ -117,12 +117,14 @@ pub async fn register(
             )
                 .into_response()
         }
-        Err(e) if e.to_string().contains("duplicate key") => {
-            (axum::http::StatusCode::CONFLICT, "Username already exists").into_response()
-        }
+        Err(e) if e.to_string().contains("duplicate key") => (
+            axum::http::StatusCode::CONFLICT,
+            axum::Json(serde_json::json!({ "error": "Username already exists" })),
+        )
+            .into_response(),
         Err(_) => (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            "Registration failed",
+            axum::Json(serde_json::json!({ "error": "Registration failed" })),
         )
             .into_response(),
     }
@@ -149,7 +151,11 @@ pub async fn login(
                 "Login failed for username: {} (user not found)",
                 payload.username
             );
-            return (axum::http::StatusCode::UNAUTHORIZED, "Invalid credentials").into_response();
+            return (
+                axum::http::StatusCode::UNAUTHORIZED,
+                axum::Json(serde_json::json!({ "error": "Invalid credentials" })),
+            )
+                .into_response();
         }
         Err(_) => {
             info!(
@@ -158,7 +164,7 @@ pub async fn login(
             );
             return (
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "Database error",
+                axum::Json(serde_json::json!({ "error": "Database error" })),
             )
                 .into_response();
         }
@@ -174,7 +180,7 @@ pub async fn login(
             );
             return (
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "Hash parse error",
+                axum::Json(serde_json::json!({ "error": "Hash parse error" })),
             )
                 .into_response();
         }
@@ -188,7 +194,11 @@ pub async fn login(
             "Login failed for username: {} (wrong password)",
             payload.username
         );
-        return (axum::http::StatusCode::UNAUTHORIZED, "Invalid credentials").into_response();
+        return (
+            axum::http::StatusCode::UNAUTHORIZED,
+            axum::Json(serde_json::json!({ "error": "Invalid credentials" })),
+        )
+            .into_response();
     }
 
     // Create JWT
