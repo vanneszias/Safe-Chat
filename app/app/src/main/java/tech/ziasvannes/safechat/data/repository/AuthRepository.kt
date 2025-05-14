@@ -15,9 +15,11 @@ constructor(
         private val userSession: UserSession
 ) {
     /**
-     * Registers a new user with the provided username and password, updates the user session, and returns the authentication response.
+     * Registers a new user with the provided username and password, updates the user session, and
+     * returns the authentication response.
      *
-     * The user session is updated with the user's ID, public key, and authentication token from the response.
+     * The user session is updated with the user's ID, public key, and authentication token from the
+     * response.
      *
      * @param username The username for the new account.
      * @param password The password for the new account.
@@ -34,8 +36,10 @@ constructor(
     /**
      * Authenticates a user with the provided credentials and updates the user session.
      *
-     * Sends a sign-in request using the given username and password. On success, stores the authentication token in the user session.
-     * Attempts to retrieve the user's profile to update the session with the user's ID and public key. If profile retrieval fails, the session will only contain the token.
+     * Sends a sign-in request using the given username and password. On success, stores the
+     * authentication token in the user session. Attempts to retrieve the user's profile to update
+     * the session with the user's ID and public key. If profile retrieval fails, the session will
+     * only contain the token.
      *
      * @param username The user's username.
      * @param password The user's password.

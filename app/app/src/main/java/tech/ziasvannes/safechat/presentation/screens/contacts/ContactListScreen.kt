@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.util.*
-import tech.ziasvannes.safechat.data.models.Contact
 import tech.ziasvannes.safechat.presentation.components.ContactListItem
 import tech.ziasvannes.safechat.presentation.components.LoadingIndicator
 import tech.ziasvannes.safechat.presentation.components.SearchTextField

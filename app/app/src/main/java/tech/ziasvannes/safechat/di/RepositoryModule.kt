@@ -17,7 +17,6 @@ import tech.ziasvannes.safechat.domain.repository.MessageRepository
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
 
-
     @Provides
     @Singleton
     fun provideContactRepository(impl: ContactRepositoryImpl): ContactRepository = impl

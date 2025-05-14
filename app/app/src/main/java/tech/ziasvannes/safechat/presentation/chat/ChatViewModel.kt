@@ -4,43 +4,44 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.UUID
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import tech.ziasvannes.safechat.data.models.MessageType
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
 import tech.ziasvannes.safechat.domain.usecase.InitiateKeyExchangeUseCase
 import tech.ziasvannes.safechat.domain.usecase.SendMessageUseCase
-import java.util.UUID
-import javax.inject.Inject
 import tech.ziasvannes.safechat.session.UserSession
 
 @HiltViewModel
-class ChatViewModel @Inject constructor(
-    private val messageRepository: MessageRepository,
-    private val contactRepository: ContactRepository,
-    private val sendMessageUseCase: SendMessageUseCase,
-    private val initiateKeyExchangeUseCase: InitiateKeyExchangeUseCase,
-    private val userSession: UserSession
+class ChatViewModel
+@Inject
+constructor(
+        private val messageRepository: MessageRepository,
+        private val contactRepository: ContactRepository,
+        private val sendMessageUseCase: SendMessageUseCase,
+        private val initiateKeyExchangeUseCase: InitiateKeyExchangeUseCase,
+        private val userSession: UserSession
 ) : ViewModel() {
 
     private val currentUserId: UUID
         get() = userSession.userId ?: throw IllegalStateException("User ID not set in session")
 
-    private val _state = MutableStateFlow(
-        ChatState(currentUserId = currentUserId)
-    )
+    private val _state = MutableStateFlow(ChatState(currentUserId = currentUserId))
     val state: StateFlow<ChatState> = _state.asStateFlow()
 
     /**
      * Handles chat-related events and updates the UI state or triggers actions accordingly.
      *
      * Processes events such as sending messages, updating message text, initiating chat loading,
-     * retrying encryption, and clearing error messages by delegating to the appropriate methods or updating state.
+     * retrying encryption, and clearing error messages by delegating to the appropriate methods or
+     * updating state.
      *
      * @param event The chat event to handle.
      */
@@ -65,9 +66,11 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
-     * Loads contact details and observes messages for the specified chat session, updating the UI state accordingly.
+     * Loads contact details and observes messages for the specified chat session, updating the UI
+     * state accordingly.
      *
-     * If an error occurs during loading or message collection, updates the state with a user-friendly error message.
+     * If an error occurs during loading or message collection, updates the state with a
+     * user-friendly error message.
      *
      * @param chatSessionId The unique identifier of the chat session whose chat is to be loaded.
      */
@@ -81,7 +84,9 @@ class ChatViewModel @Inject constructor(
                 val currentUserId = state.value.currentUserId
                 val contactId = chatSession?.participantIds?.firstOrNull { it != currentUserId }
                 val contact = contactId?.let { contactRepository.getContactById(it) }
-                _state.update { it.copy(contact = contact, contactName = contact?.name ?: "", isLoading = false) }
+                _state.update {
+                    it.copy(contact = contact, contactName = contact?.name ?: "", isLoading = false)
+                }
 
                 // Start observing messages for the chat session
                 messageRepository.getMessages(chatSessionId).collect { messages ->
@@ -89,7 +94,9 @@ class ChatViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e("ChatViewModel", "Error loading chat", e)
-                _state.update { it.copy(error = "Failed to load chat. Please try again.", isLoading = false) }
+                _state.update {
+                    it.copy(error = "Failed to load chat. Please try again.", isLoading = false)
+                }
             }
         }
     }
@@ -97,7 +104,8 @@ class ChatViewModel @Inject constructor(
     /**
      * Sends a text message to the current contact and updates the UI state based on the result.
      *
-     * If the message is sent successfully, clears the message input field. If sending fails, updates the state with the error message.
+     * If the message is sent successfully, clears the message input field. If sending fails,
+     * updates the state with the error message.
      *
      * @param content The text content of the message to send.
      */
@@ -105,17 +113,15 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             val currentState = state.value
             val contact = currentState.contact ?: return@launch
-            
+
             try {
                 sendMessageUseCase(
-                    content = content,
-                    receiverId = contact.id,
-                    type = MessageType.Text
-                ).onSuccess {
-                    _state.update { it.copy(messageText = "") }
-                }.onFailure { error ->
-                    _state.update { it.copy(error = error.message) }
-                }
+                                content = content,
+                                receiverId = contact.id,
+                                type = MessageType.Text
+                        )
+                        .onSuccess { _state.update { it.copy(messageText = "") } }
+                        .onFailure { error -> _state.update { it.copy(error = error.message) } }
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message ?: "Failed to send message") }
             }
@@ -125,22 +131,18 @@ class ChatViewModel @Inject constructor(
     /**
      * Attempts to re-establish end-to-end encryption with the current contact.
      *
-     * Updates the UI state to reflect encryption status or any encountered error.
-     * If no contact is selected, the operation is skipped.
+     * Updates the UI state to reflect encryption status or any encountered error. If no contact is
+     * selected, the operation is skipped.
      */
     private fun retryEncryption() {
         viewModelScope.launch {
             val currentState = state.value
             val contact = currentState.contact ?: return@launch
-            
+
             try {
                 initiateKeyExchangeUseCase(contact.id)
-                    .onSuccess {
-                        _state.update { it.copy(isEncrypted = true) }
-                    }
-                    .onFailure { error ->
-                        _state.update { it.copy(error = error.message) }
-                    }
+                        .onSuccess { _state.update { it.copy(isEncrypted = true) } }
+                        .onFailure { error -> _state.update { it.copy(error = error.message) } }
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message ?: "Failed to establish encryption") }
             }

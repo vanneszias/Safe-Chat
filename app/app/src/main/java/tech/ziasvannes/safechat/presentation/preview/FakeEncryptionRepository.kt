@@ -1,19 +1,21 @@
 package tech.ziasvannes.safechat.presentation.preview
 
-import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.PublicKey
+import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 
 /**
- * A fake implementation of EncryptionRepository for use in UI previews only.
- * This should NOT be used in the actual app's dependency injection system.
+ * A fake implementation of EncryptionRepository for use in UI previews only. This should NOT be
+ * used in the actual app's dependency injection system.
  */
 class FakeEncryptionRepository : EncryptionRepository {
     /**
-     * Throws a [NotImplementedError] to indicate key pair generation is not supported in preview mode.
+     * Throws a [NotImplementedError] to indicate key pair generation is not supported in preview
+     * mode.
      *
-     * This method is intended only for UI previews and does not perform any cryptographic operations.
+     * This method is intended only for UI previews and does not perform any cryptographic
+     * operations.
      * @throws NotImplementedError always, as this function is not implemented.
      */
     override suspend fun generateKeyPair(): KeyPair {
@@ -23,7 +25,8 @@ class FakeEncryptionRepository : EncryptionRepository {
     /**
      * Does nothing; included to satisfy the interface for UI preview purposes.
      *
-     * This method does not store the provided key pair and has no effect in this fake implementation.
+     * This method does not store the provided key pair and has no effect in this fake
+     * implementation.
      */
     override suspend fun storeKeyPair(keyPair: KeyPair) {
         // No-op for previews
@@ -40,9 +43,11 @@ class FakeEncryptionRepository : EncryptionRepository {
     }
 
     /**
-     * Throws a [NotImplementedError] as private key retrieval is not supported in this preview implementation.
+     * Throws a [NotImplementedError] as private key retrieval is not supported in this preview
+     * implementation.
      *
-     * This method is intended solely for UI preview scenarios and does not provide actual cryptographic functionality.
+     * This method is intended solely for UI preview scenarios and does not provide actual
+     * cryptographic functionality.
      */
     override suspend fun getPrivateKey(): PrivateKey {
         throw NotImplementedError("Preview only - not actually implemented")
@@ -59,11 +64,15 @@ class FakeEncryptionRepository : EncryptionRepository {
     }
 
     /**
-     * Returns a fixed pair of byte arrays simulating encrypted content and IV for UI preview purposes.
+     * Returns a fixed pair of byte arrays simulating encrypted content and IV for UI preview
+     * purposes.
      *
      * @return A pair of byte arrays representing fake encrypted data and initialization vector.
      */
-    override suspend fun encryptMessage(message: String, sharedSecret: ByteArray): Pair<ByteArray, ByteArray> {
+    override suspend fun encryptMessage(
+            message: String,
+            sharedSecret: ByteArray
+    ): Pair<ByteArray, ByteArray> {
         return Pair(byteArrayOf(1, 2, 3), byteArrayOf(4, 5, 6)) // Fake data for previews
     }
 
@@ -72,7 +81,11 @@ class FakeEncryptionRepository : EncryptionRepository {
      *
      * Always returns "Decrypted message" regardless of input.
      */
-    override suspend fun decryptMessage(encryptedContent: ByteArray, iv: ByteArray, sharedSecret: ByteArray): String {
+    override suspend fun decryptMessage(
+            encryptedContent: ByteArray,
+            iv: ByteArray,
+            sharedSecret: ByteArray
+    ): String {
         return "Decrypted message" // Fake data for previews
     }
 
@@ -86,9 +99,11 @@ class FakeEncryptionRepository : EncryptionRepository {
     }
 
     /**
-     * Returns a fixed string representing a newly generated fake public key for UI preview purposes.
+     * Returns a fixed string representing a newly generated fake public key for UI preview
+     * purposes.
      *
-     * This method does not perform any real cryptographic key generation and should not be used in production code.
+     * This method does not perform any real cryptographic key generation and should not be used in
+     * production code.
      *
      * @return A hardcoded string simulating a new public key.
      */

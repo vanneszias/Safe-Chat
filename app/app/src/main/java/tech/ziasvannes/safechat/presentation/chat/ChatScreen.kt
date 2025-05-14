@@ -55,9 +55,7 @@ fun ChatScreen(
     val state by viewModel.state.collectAsState()
 
     // If chatSessionId is provided, load messages and contact for that chat session
-    LaunchedEffect(chatSessionId) {
-        chatSessionId?.let { viewModel.loadChat(it) }
-    }
+    LaunchedEffect(chatSessionId) { chatSessionId?.let { viewModel.loadChat(it) } }
 
     Scaffold(
             topBar = {

@@ -312,7 +312,8 @@ pub async fn login(
 /// assert_eq!(response.status(), 200);
 /// let profile: UserProfile = response.json().await.unwrap();
 /// assert_eq!(profile.username, "alice");
-/// ```pub async fn get_profile(State(state): State<Arc<AppState>>, req: Request) -> impl IntoResponse {
+/// ```
+pub async fn get_profile(State(state): State<Arc<AppState>>, req: Request) -> impl IntoResponse {
     // Extract Authorization header
     let auth_header = req
         .headers()
@@ -401,7 +402,8 @@ pub async fn login(
 /// // PATCH /api/profile/key
 /// // Authorization: Bearer <token>
 /// // Body: { "public_key": "base64-encoded-key" }
-/// ```pub async fn update_public_key(
+/// ```
+pub async fn update_public_key(
     State(state): State<Arc<AppState>>,
     req: Request,
 ) -> impl IntoResponse {

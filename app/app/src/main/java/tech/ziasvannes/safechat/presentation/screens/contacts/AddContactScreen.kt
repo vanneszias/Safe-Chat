@@ -26,12 +26,14 @@ import tech.ziasvannes.safechat.domain.repository.ContactRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 /**
- * Displays the UI for adding a new contact, including input fields for name, public key, and optional avatar URL.
+ * Displays the UI for adding a new contact, including input fields for name, public key, and
+ * optional avatar URL.
  *
- * Shows a loading indicator during contact creation and displays error messages in a snackbar.
- * The save button is enabled only when both the name and public key fields are filled.
+ * Shows a loading indicator during contact creation and displays error messages in a snackbar. The
+ * save button is enabled only when both the name and public key fields are filled.
  *
- * @param onNavigateBack Callback invoked to navigate back after a successful contact addition or when the back button is pressed.
+ * @param onNavigateBack Callback invoked to navigate back after a successful contact addition or
+ * when the back button is pressed.
  */
 @Composable
 fun AddContactScreen(onNavigateBack: () -> Unit, viewModel: AddContactViewModel = hiltViewModel()) {
@@ -139,16 +141,16 @@ class AddContactViewModel @Inject constructor(private val contactRepository: Con
     fun onAvatarUrlChange(newUrl: String) {
         _state.update { it.copy(avatarUrl = newUrl) }
     }
-    /**
-     * Clears the current error message from the state.
-     */
+    /** Clears the current error message from the state. */
     fun clearError() {
         _state.update { it.copy(error = null) }
     }
     /**
      * Attempts to add a new contact using the current form state.
      *
-     * Validates that the name and public key fields are not blank. If validation passes, creates a new contact and saves it asynchronously via the repository. Updates the UI state to reflect loading and error conditions. Invokes the provided callback upon successful addition.
+     * Validates that the name and public key fields are not blank. If validation passes, creates a
+     * new contact and saves it asynchronously via the repository. Updates the UI state to reflect
+     * loading and error conditions. Invokes the provided callback upon successful addition.
      *
      * @param onSuccess Callback invoked when the contact is successfully added.
      */

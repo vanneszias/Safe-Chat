@@ -40,9 +40,12 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
- * Composable screen for viewing and editing user profile information, including username, avatar, user ID, and cryptographic keys.
+ * Composable screen for viewing and editing user profile information, including username, avatar,
+ * user ID, and cryptographic keys.
  *
- * Allows toggling between view and edit modes, copying the user ID and public key to the clipboard, and generating a new key pair with a warning about invalidating existing encrypted conversations. Displays loading and error states as appropriate.
+ * Allows toggling between view and edit modes, copying the user ID and public key to the clipboard,
+ * and generating a new key pair with a warning about invalidating existing encrypted conversations.
+ * Displays loading and error states as appropriate.
  *
  * @param onNavigateBack Callback invoked when the user requests to navigate back.
  */
@@ -442,7 +445,8 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
 /**
  * Returns the input string formatted as a canonical UUID (8-4-4-4-12 dashed pattern) if possible.
  *
- * If the input contains exactly 32 hexadecimal characters (with or without dashes), it is reformatted to the standard UUID pattern. Otherwise, the original string is returned unchanged.
+ * If the input contains exactly 32 hexadecimal characters (with or without dashes), it is
+ * reformatted to the standard UUID pattern. Otherwise, the original string is returned unchanged.
  *
  * @param uuid The string to format as a UUID.
  * @return The formatted UUID string, or the original input if it cannot be formatted.

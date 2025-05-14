@@ -9,25 +9,22 @@ import tech.ziasvannes.safechat.data.local.entity.ContactEntity
 import tech.ziasvannes.safechat.data.local.entity.MessageEntity
 
 @Database(
-    entities = [
-        ContactEntity::class,
-        MessageEntity::class
-    ],
-    version = 2,
-    exportSchema = false
+        entities = [ContactEntity::class, MessageEntity::class],
+        version = 2,
+        exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class SafeChatDatabase : RoomDatabase() {
     /**
- * Provides access to contact-related database operations.
- *
- * @return The DAO for performing CRUD operations on contacts.
- */
-abstract fun contactDao(): ContactDao
+     * Provides access to contact-related database operations.
+     *
+     * @return The DAO for performing CRUD operations on contacts.
+     */
+    abstract fun contactDao(): ContactDao
     /**
- * Provides access to database operations related to messages.
- *
- * @return The DAO for performing CRUD operations on message entities.
- */
-abstract fun messageDao(): MessageDao
+     * Provides access to database operations related to messages.
+     *
+     * @return The DAO for performing CRUD operations on message entities.
+     */
+    abstract fun messageDao(): MessageDao
 }

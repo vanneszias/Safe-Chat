@@ -37,9 +37,9 @@ constructor(
     /**
      * Initiates the user sign-up process and updates authentication state accordingly.
      *
-     * Sets the authentication state to loading, attempts to register a new user with the provided credentials,
-     * and updates the user session and authentication result on success. On failure, sets an error state with
-     * a detailed error message based on the type of exception encountered.
+     * Sets the authentication state to loading, attempts to register a new user with the provided
+     * credentials, and updates the user session and authentication result on success. On failure,
+     * sets an error state with a detailed error message based on the type of exception encountered.
      *
      * @param username The username for the new account.
      * @param password The password for the new account.
@@ -80,10 +80,10 @@ constructor(
     /**
      * Initiates the sign-in process with the provided credentials and updates authentication state.
      *
-     * Sets the authentication state to loading, attempts to sign in using the given username and password,
-     * fetches and updates the user session with the user's ID and public key on success, and updates the state
-     * to success with the authentication token. On failure, sets the state to error with a detailed message
-     * based on the type of exception encountered.
+     * Sets the authentication state to loading, attempts to sign in using the given username and
+     * password, fetches and updates the user session with the user's ID and public key on success,
+     * and updates the state to success with the authentication token. On failure, sets the state to
+     * error with a detailed message based on the type of exception encountered.
      *
      * @param username The user's username.
      * @param password The user's password.

@@ -1,8 +1,6 @@
 package tech.ziasvannes.safechat.presentation.navigation
 
-/**
- * Navigation routes for the app
- */
+/** Navigation routes for the app */
 object NavRoutes {
     const val CONTACTS = "contacts"
     const val CHAT = "chat/{chatSessionId}"

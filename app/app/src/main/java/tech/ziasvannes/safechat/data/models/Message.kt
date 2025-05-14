@@ -3,15 +3,15 @@ package tech.ziasvannes.safechat.data.models
 import java.util.UUID
 
 data class Message(
-    val id: UUID,
-    val content: String,
-    val timestamp: Long,
-    val senderId: UUID,
-    val receiverId: UUID,
-    val status: MessageStatus,
-    val type: MessageType,
-    val encryptedContent: ByteArray,
-    val iv: ByteArray
+        val id: UUID,
+        val content: String,
+        val timestamp: Long,
+        val senderId: UUID,
+        val receiverId: UUID,
+        val status: MessageStatus,
+        val type: MessageType,
+        val encryptedContent: ByteArray,
+        val iv: ByteArray
 ) {
     /**
      * Checks if this message is equal to another object based on the message's unique identifier.
@@ -29,7 +29,8 @@ data class Message(
     /**
      * Returns the hash code of this message based on its unique identifier.
      *
-     * Only the `id` property is used to compute the hash code, ensuring consistency with the `equals` method.
+     * Only the `id` property is used to compute the hash code, ensuring consistency with the
+     * `equals` method.
      *
      * @return The hash code of the message's `id`.
      */

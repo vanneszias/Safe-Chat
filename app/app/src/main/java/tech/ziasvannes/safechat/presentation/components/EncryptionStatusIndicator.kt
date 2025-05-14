@@ -18,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -36,46 +35,52 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
 /**
  * Displays an animated indicator representing the current encryption status of a chat session.
  *
- * Visually communicates whether the session is encrypted, not encrypted, or in the process of key exchange.
- * The indicator animates its background and icon color based on the status, and applies a continuous rotation
- * to the icon when key exchange is in progress.
+ * Visually communicates whether the session is encrypted, not encrypted, or in the process of key
+ * exchange. The indicator animates its background and icon color based on the status, and applies a
+ * continuous rotation to the icon when key exchange is in progress.
  *
  * @param status The current encryption status to display.
  * @param modifier Optional modifier for styling the indicator.
  */
 @Composable
-fun EncryptionStatusIndicator(
-    status: EncryptionStatus,
-    modifier: Modifier = Modifier
-) {
-    val backgroundColor = animateColorAsState(
-        targetValue = when (status) {
-            EncryptionStatus.ENCRYPTED -> SafeChatColors.Encrypted.copy(alpha = 0.2f)
-            EncryptionStatus.NOT_ENCRYPTED -> SafeChatColors.NotEncrypted.copy(alpha = 0.2f)
-            EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS -> SafeChatColors.KeyExchangeInProgress.copy(alpha = 0.2f)
-        },
-        animationSpec = tween(300),
-        label = "Background Color Animation"
-    )
-    
-    val contentColor = animateColorAsState(
-        targetValue = when (status) {
-            EncryptionStatus.ENCRYPTED -> SafeChatColors.Encrypted
-            EncryptionStatus.NOT_ENCRYPTED -> SafeChatColors.NotEncrypted
-            EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS -> SafeChatColors.KeyExchangeInProgress
-        },
-        animationSpec = tween(300),
-        label = "Content Color Animation"
-    )
+fun EncryptionStatusIndicator(status: EncryptionStatus, modifier: Modifier = Modifier) {
+    val backgroundColor =
+            animateColorAsState(
+                    targetValue =
+                            when (status) {
+                                EncryptionStatus.ENCRYPTED ->
+                                        SafeChatColors.Encrypted.copy(alpha = 0.2f)
+                                EncryptionStatus.NOT_ENCRYPTED ->
+                                        SafeChatColors.NotEncrypted.copy(alpha = 0.2f)
+                                EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS ->
+                                        SafeChatColors.KeyExchangeInProgress.copy(alpha = 0.2f)
+                            },
+                    animationSpec = tween(300),
+                    label = "Background Color Animation"
+            )
+
+    val contentColor =
+            animateColorAsState(
+                    targetValue =
+                            when (status) {
+                                EncryptionStatus.ENCRYPTED -> SafeChatColors.Encrypted
+                                EncryptionStatus.NOT_ENCRYPTED -> SafeChatColors.NotEncrypted
+                                EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS ->
+                                        SafeChatColors.KeyExchangeInProgress
+                            },
+                    animationSpec = tween(300),
+                    label = "Content Color Animation"
+            )
 
     // For the KEY_EXCHANGE_IN_PROGRESS state, we'll add a rotation animation
     var rotationAngle by remember { mutableStateOf(0f) }
-    val rotation = animateFloatAsState(
-        targetValue = rotationAngle,
-        animationSpec = tween(500),
-        label = "Rotation Animation"
-    )
-    
+    val rotation =
+            animateFloatAsState(
+                    targetValue = rotationAngle,
+                    animationSpec = tween(500),
+                    label = "Rotation Animation"
+            )
+
     // Update the rotation angle when in KEY_EXCHANGE_IN_PROGRESS state
     LaunchedEffect(status) {
         if (status == EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS) {
@@ -87,42 +92,44 @@ fun EncryptionStatusIndicator(
     }
 
     Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(backgroundColor.value)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+            modifier =
+                    modifier.clip(RoundedCornerShape(16.dp))
+                            .background(backgroundColor.value)
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
     ) {
         // Icon based on encryption status
         Icon(
-            imageVector = when (status) {
-                EncryptionStatus.ENCRYPTED -> Icons.Default.Lock
-                EncryptionStatus.NOT_ENCRYPTED -> Icons.Default.Clear  // TODO Lock Open
-                EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS -> Icons.Default.Check // TODO Sync
-            },
-            contentDescription = "Encryption Status",
-            tint = contentColor.value,
-            modifier = Modifier
-                .size(18.dp)
-                .graphicsLayer {
-                    if (status == EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS) {
-                        rotationZ = rotation.value
-                    }
-                }
+                imageVector =
+                        when (status) {
+                            EncryptionStatus.ENCRYPTED -> Icons.Default.Lock
+                            EncryptionStatus.NOT_ENCRYPTED -> Icons.Default.Clear // TODO Lock Open
+                            EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS ->
+                                    Icons.Default.Check // TODO Sync
+                        },
+                contentDescription = "Encryption Status",
+                tint = contentColor.value,
+                modifier =
+                        Modifier.size(18.dp).graphicsLayer {
+                            if (status == EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS) {
+                                rotationZ = rotation.value
+                            }
+                        }
         )
-        
+
         Spacer(modifier = Modifier.width(8.dp))
-        
+
         // Status text
         Text(
-            text = when (status) {
-                EncryptionStatus.ENCRYPTED -> "Encrypted"
-                EncryptionStatus.NOT_ENCRYPTED -> "Not Encrypted"
-                EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS -> "Setting up encryption..."
-            },
-            style = MaterialTheme.typography.labelMedium,
-            color = contentColor.value
+                text =
+                        when (status) {
+                            EncryptionStatus.ENCRYPTED -> "Encrypted"
+                            EncryptionStatus.NOT_ENCRYPTED -> "Not Encrypted"
+                            EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS -> "Setting up encryption..."
+                        },
+                style = MaterialTheme.typography.labelMedium,
+                color = contentColor.value
         )
     }
 }
@@ -130,7 +137,8 @@ fun EncryptionStatusIndicator(
 /**
  * Displays a preview of the EncryptionStatusIndicator composable in all encryption states.
  *
- * Shows the indicator for ENCRYPTED, NOT_ENCRYPTED, and KEY_EXCHANGE_IN_PROGRESS statuses within a themed surface for visual inspection in design tools.
+ * Shows the indicator for ENCRYPTED, NOT_ENCRYPTED, and KEY_EXCHANGE_IN_PROGRESS statuses within a
+ * themed surface for visual inspection in design tools.
  */
 @Preview(showBackground = true)
 @Composable
@@ -138,17 +146,15 @@ fun EncryptionStatusIndicatorPreview() {
     SafeChatTheme {
         Surface {
             Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Encrypted status
                 EncryptionStatusIndicator(status = EncryptionStatus.ENCRYPTED)
-                
+
                 // Not encrypted status
                 EncryptionStatusIndicator(status = EncryptionStatus.NOT_ENCRYPTED)
-                
+
                 // Key exchange in progress status
                 EncryptionStatusIndicator(status = EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS)
             }
