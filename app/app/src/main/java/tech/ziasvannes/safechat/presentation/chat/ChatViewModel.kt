@@ -6,8 +6,9 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import tech.ziasvannes.safechat.data.models.MessageType
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
@@ -16,16 +17,23 @@ import tech.ziasvannes.safechat.domain.usecase.InitiateKeyExchangeUseCase
 import tech.ziasvannes.safechat.domain.usecase.SendMessageUseCase
 import java.util.UUID
 import javax.inject.Inject
+import tech.ziasvannes.safechat.session.UserSession
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val messageRepository: MessageRepository,
     private val contactRepository: ContactRepository,
     private val sendMessageUseCase: SendMessageUseCase,
-    private val initiateKeyExchangeUseCase: InitiateKeyExchangeUseCase
+    private val initiateKeyExchangeUseCase: InitiateKeyExchangeUseCase,
+    private val userSession: UserSession
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ChatState(isEncrypted = true))
+    private val currentUserId: UUID
+        get() = userSession.userId ?: throw IllegalStateException("User ID not set in session")
+
+    private val _state = MutableStateFlow(
+        ChatState(currentUserId = currentUserId)
+    )
     val state: StateFlow<ChatState> = _state.asStateFlow()
 
     /**
@@ -45,7 +53,7 @@ class ChatViewModel @Inject constructor(
                 _state.update { it.copy(messageText = event.text) }
             }
             is ChatEvent.InitiateChat -> {
-                loadChat(event.contactId)
+                loadChat(event.chatSessionId)
             }
             ChatEvent.RetryEncryption -> {
                 retryEncryption()
@@ -57,32 +65,31 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
-     * Loads contact details and observes messages for the specified contact, updating the UI state accordingly.
+     * Loads contact details and observes messages for the specified chat session, updating the UI state accordingly.
      *
      * If an error occurs during loading or message collection, updates the state with a user-friendly error message.
      *
-     * @param contactId The unique identifier of the contact whose chat is to be loaded.
+     * @param chatSessionId The unique identifier of the chat session whose chat is to be loaded.
      */
-    private fun loadChat(contactId: UUID) {
+    fun loadChat(chatSessionId: UUID) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-            
             try {
-                // Load contact information
-                val contact = contactRepository.getContactById(contactId)
-                _state.update { it.copy(contact = contact) }
+                // Get all chat sessions and find the one with the given ID
+                val chatSessions = messageRepository.getChatSessions().first()
+                val chatSession = chatSessions.find { it.id == chatSessionId }
+                val currentUserId = state.value.currentUserId
+                val contactId = chatSession?.participantIds?.firstOrNull { it != currentUserId }
+                val contact = contactId?.let { contactRepository.getContactById(it) }
+                _state.update { it.copy(contact = contact, contactName = contact?.name ?: "", isLoading = false) }
 
-                // Start observing messages
-                messageRepository.getMessages(contactId).collect { messages ->
+                // Start observing messages for the chat session
+                messageRepository.getMessages(chatSessionId).collect { messages ->
                     _state.update { it.copy(messages = messages) }
                 }
             } catch (e: Exception) {
-                // Log the detailed error for debugging
                 Log.e("ChatViewModel", "Error loading chat", e)
-                // Present a sanitized message to the user
-                _state.update { it.copy(error = "Failed to load chat. Please try again.") }
-            } finally {
-                _state.update { it.copy(isLoading = false) }
+                _state.update { it.copy(error = "Failed to load chat. Please try again.", isLoading = false) }
             }
         }
     }

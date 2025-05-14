@@ -34,7 +34,9 @@ constructor(
     /**
      * Handles profile-related events and updates the profile state accordingly.
      *
-     * Processes events such as loading the profile, toggling edit mode, updating the user name, saving changes, selecting an avatar, toggling public key visibility, generating a new key pair, and clearing errors.
+     * Processes events such as loading the profile, toggling edit mode, updating the user name,
+     * saving changes, selecting an avatar, toggling public key visibility, generating a new key
+     * pair, and clearing errors.
      *
      * @param event The profile event to handle.
      */
@@ -73,12 +75,12 @@ constructor(
     /**
      * Loads the user's profile data asynchronously and updates the UI state.
      *
-     * Retrieves the current public key from the encryption repository and sets the user name and loading status.
-     * If an error occurs during loading, updates the state with an error message.
+     * Retrieves the current public key from the encryption repository and sets the user name and
+     * loading status. If an error occurs during loading, updates the state with an error message.
      */
     private fun loadProfile() {
         _state.update { it.copy(isLoading = true) }
-        
+
         viewModelScope.launch {
             try {
                 val profile: ProfileResponse = apiService.getProfile()
@@ -92,23 +94,22 @@ constructor(
                 }
             } catch (e: Exception) {
                 _state.update {
-                    it.copy(
-                        isLoading = false,
-                        error = e.message ?: "Failed to load profile"
-                    )
+                    it.copy(isLoading = false, error = e.message ?: "Failed to load profile")
                 }
             }
         }
     }
 
     /**
-     * Persists the current profile changes and updates the UI state to reflect saving progress and completion.
+     * Persists the current profile changes and updates the UI state to reflect saving progress and
+     * completion.
      *
-     * Sets the loading indicator while saving, disables edit mode upon success, and updates the error state if saving fails.
+     * Sets the loading indicator while saving, disables edit mode upon success, and updates the
+     * error state if saving fails.
      */
     private fun saveProfile() {
         _state.update { it.copy(isLoading = true) }
-        
+
         viewModelScope.launch {
             try {
                 val selfId = UUID.fromString("00000000-0000-0000-0000-000000000000")
@@ -125,10 +126,7 @@ constructor(
                 _state.update { it.copy(isLoading = false, isEditMode = false) }
             } catch (e: Exception) {
                 _state.update {
-                    it.copy(
-                        isLoading = false,
-                        error = e.message ?: "Failed to save profile"
-                    )
+                    it.copy(isLoading = false, error = e.message ?: "Failed to save profile")
                 }
             }
         }
@@ -137,44 +135,38 @@ constructor(
     /**
      * Updates the user's avatar by setting the avatar URL in the profile state.
      *
-     * Simulates avatar processing and updates the state with the new avatar URL or an error message if the operation fails.
+     * Simulates avatar processing and updates the state with the new avatar URL or an error message
+     * if the operation fails.
      *
      * @param uri The URI of the selected avatar image.
      */
     private fun updateAvatar(uri: Uri) {
         _state.update { it.copy(isLoading = true) }
-        
+
         viewModelScope.launch {
             try {
                 // In a real app, this would upload the image to storage
                 // For now, we'll simulate processing with a delay
                 kotlinx.coroutines.delay(500)
-                
-                _state.update {
-                    it.copy(
-                        avatarUrl = uri.toString(),
-                        isLoading = false
-                    )
-                }
+
+                _state.update { it.copy(avatarUrl = uri.toString(), isLoading = false) }
             } catch (e: Exception) {
                 _state.update {
-                    it.copy(
-                        isLoading = false,
-                        error = e.message ?: "Failed to update avatar"
-                    )
+                    it.copy(isLoading = false, error = e.message ?: "Failed to update avatar")
                 }
             }
         }
     }
 
     /**
-     * Asynchronously generates a new encryption key pair and updates the profile state with the new public key.
+     * Asynchronously generates a new encryption key pair and updates the profile state with the new
+     * public key.
      *
      * If key generation fails, updates the state with an error message.
      */
     private fun generateNewKeyPair() {
         _state.update { it.copy(isLoading = true) }
-        
+
         viewModelScope.launch {
             try {
                 // Generate new keys
@@ -187,8 +179,8 @@ constructor(
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
-                        isLoading = false,
-                        error = e.message ?: "Failed to generate new key pair"
+                            isLoading = false,
+                            error = e.message ?: "Failed to generate new key pair"
                     )
                 }
             }

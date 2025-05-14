@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import java.util.UUID
 import tech.ziasvannes.safechat.presentation.chat.ChatScreen
+import tech.ziasvannes.safechat.presentation.screens.contacts.AddContactScreen
 import tech.ziasvannes.safechat.presentation.screens.contacts.ContactListScreen
 import tech.ziasvannes.safechat.presentation.screens.profile.AuthScreen
 import tech.ziasvannes.safechat.presentation.screens.profile.ProfileScreen
@@ -35,35 +36,8 @@ fun SafeChatNavHost(
                         )
                         navController.navigate(NavRoutes.createChatRoute(chatSessionId.toString()))
                     },
-                    onNavigateToAddContact = { navController.navigate(NavRoutes.ADD_CONTACT) },
-                    onNavigateToMe = { navController.navigate(NavRoutes.PROFILE) },
-                    onAddContactClick = { navController.navigate(NavRoutes.ADD_CONTACT) }
+                    onNavigateToProfile = { navController.navigate(NavRoutes.PROFILE) }
             )
-        }
-
-        // Chat screen
-        composable(
-                route = NavRoutes.CHAT,
-                arguments = listOf(navArgument("chatSessionId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val chatSessionIdString =
-                    backStackEntry.arguments?.getString("chatSessionId") ?: return@composable
-            val chatSessionId =
-                    try {
-                        UUID.fromString(chatSessionIdString)
-                    } catch (e: IllegalArgumentException) {
-                        null
-                    } ?: return@composable
-
-            ChatScreen(
-                    chatSessionId = chatSessionId,
-                    onNavigateBack = { navController.navigateUp() }
-            )
-        }
-
-        // Settings screen
-        composable(route = NavRoutes.SETTINGS) {
-            SettingsScreen(onNavigateBack = { navController.navigateUp() })
         }
 
         // Add Contact screen
@@ -71,9 +45,9 @@ fun SafeChatNavHost(
             AddContactScreen(onNavigateBack = { navController.navigateUp() })
         }
 
-        // Profile screen
-        composable(route = NavRoutes.PROFILE) {
-            ProfileScreen(onNavigateBack = { navController.navigateUp() })
+        // Settings screen
+        composable(route = NavRoutes.SETTINGS) {
+            SettingsScreen(onNavigateBack = { navController.navigateUp() })
         }
 
         // Auth screen
@@ -84,6 +58,27 @@ fun SafeChatNavHost(
                             popUpTo(NavRoutes.AUTH) { inclusive = true }
                         }
                     }
+            )
+        }
+
+        // Profile screen (for direct navigation from contacts screen only)
+        composable(route = NavRoutes.PROFILE) {
+            ProfileScreen(onNavigateBack = { navController.navigateUp() })
+        }
+
+        // Chat screen
+        composable(
+                route = NavRoutes.CHAT,
+                arguments = listOf(navArgument("chatSessionId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val chatSessionIdArg = backStackEntry.arguments?.getString("chatSessionId")
+            val chatSessionId =
+                    chatSessionIdArg?.let {
+                        runCatching { java.util.UUID.fromString(it) }.getOrNull()
+                    }
+            ChatScreen(
+                    chatSessionId = chatSessionId,
+                    onNavigateBack = { navController.navigateUp() }
             )
         }
     }

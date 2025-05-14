@@ -2,19 +2,15 @@ use crate::crypto::generate_keypair_base64;
 use crate::state::AppState;
 use argon2::password_hash::{SaltString, rand_core::OsRng};
 use argon2::{Argon2, PasswordHasher, PasswordVerifier};
-use axum::extract::Json as AxumJson;
-use axum::http::header::AUTHORIZATION;
 use axum::{
-    Json,
+    Json, body,
     extract::{Request, State},
     http::StatusCode,
+    http::header::AUTHORIZATION,
     response::IntoResponse,
 };
-use axum_typed_headers::TypedHeader;
 use chrono::{DateTime, Utc};
-use headers::Authorization;
-use headers::authorization::Bearer;
-use jsonwebtoken::{DecodingKey, EncodingKey, Header, TokenData, Validation, decode, encode};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
@@ -42,6 +38,7 @@ struct Claims {
 
 #[derive(Serialize)]
 pub struct UserProfile {
+    pub id: String,
     pub username: String,
     pub public_key: String,
     pub created_at: String,
@@ -75,21 +72,28 @@ pub async fn register(
     let public_key_b64 = generate_keypair_base64();
     // (In a real app, store the private key securely, e.g., in a KMS or encrypted vault)
 
-    // Insert user into DB
-    let res =
-        sqlx::query("INSERT INTO users (username, password_hash, public_key) VALUES ($1, $2, $3)")
-            .bind(&payload.username)
-            .bind(&password_hash)
-            .bind(&public_key_b64)
-            .execute(&state.db)
-            .await;
+    // Insert user into DB and return id
+    let res = sqlx::query(
+        "INSERT INTO users (username, password_hash, public_key) VALUES ($1, $2, $3) RETURNING id",
+    )
+    .bind(&payload.username)
+    .bind(&password_hash)
+    .bind(&public_key_b64)
+    .fetch_one(&state.db)
+    .await;
 
     match res {
-        Ok(_) => (
-            axum::http::StatusCode::CREATED,
-            format!("User registered. Public key: {}", public_key_b64),
-        )
-            .into_response(),
+        Ok(record) => {
+            let id: i32 = record.try_get("id").unwrap_or_default();
+            (
+                axum::http::StatusCode::CREATED,
+                Json(serde_json::json!({
+                    "id": id.to_string(),
+                    "public_key": public_key_b64
+                })),
+            )
+                .into_response()
+        }
         Err(e) if e.to_string().contains("duplicate key") => {
             (axum::http::StatusCode::CONFLICT, "Username already exists").into_response()
         }
@@ -235,17 +239,20 @@ pub async fn get_profile(State(state): State<Arc<AppState>>, req: Request) -> im
     };
     let username = token_data.claims.sub.clone();
     info!("Profile requested for username: {}", username);
-    // Fetch user from DB
-    let row = sqlx::query("SELECT username, public_key, created_at FROM users WHERE username = $1")
-        .bind(&username)
-        .fetch_optional(&state.db)
-        .await;
+    // Fetch user from DB (include id)
+    let row =
+        sqlx::query("SELECT id, username, public_key, created_at FROM users WHERE username = $1")
+            .bind(&username)
+            .fetch_optional(&state.db)
+            .await;
     match row {
         Ok(Some(record)) => {
+            let id: i32 = record.try_get("id").unwrap_or_default();
             let username: String = record.try_get("username").unwrap_or_default();
             let public_key: String = record.try_get("public_key").unwrap_or_default();
             let created_at: DateTime<Utc> = record.try_get("created_at").unwrap_or(Utc::now());
             let profile = UserProfile {
+                id: id.to_string(),
                 username,
                 public_key,
                 created_at: created_at.to_rfc3339(),
@@ -265,12 +272,27 @@ pub async fn get_profile(State(state): State<Arc<AppState>>, req: Request) -> im
 
 pub async fn update_public_key(
     State(state): State<Arc<AppState>>,
-    TypedHeader(Authorization(bearer)): TypedHeader<Authorization<Bearer>>,
-    AxumJson(payload): AxumJson<UpdateKeyRequest>,
+    req: Request,
 ) -> impl IntoResponse {
+    // Extract Authorization header
+    let auth_header = req
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|h| h.to_str().ok());
+    let token = match auth_header.and_then(|h| h.strip_prefix("Bearer ")) {
+        Some(t) => t,
+        None => {
+            info!("Update key failed: missing or invalid Authorization header");
+            return (
+                StatusCode::UNAUTHORIZED,
+                "Missing or invalid Authorization header",
+            )
+                .into_response();
+        }
+    };
     // Decode JWT
     let token_data = match decode::<Claims>(
-        bearer.token(),
+        token,
         &DecodingKey::from_secret(state.jwt_secret.as_bytes()),
         &Validation::default(),
     ) {
@@ -282,6 +304,19 @@ pub async fn update_public_key(
     };
     let username = token_data.claims.sub.clone();
     info!("Public key update requested for username: {}", username);
+    // Extract JSON body
+    let bytes = match body::to_bytes(req.into_body(), 64 * 1024).await {
+        Ok(b) => b,
+        Err(_) => {
+            return (StatusCode::BAD_REQUEST, "Invalid body").into_response();
+        }
+    };
+    let payload: UpdateKeyRequest = match serde_json::from_slice(&bytes) {
+        Ok(p) => p,
+        Err(_) => {
+            return (StatusCode::BAD_REQUEST, "Invalid JSON").into_response();
+        }
+    };
     // Update public key in DB
     let res = sqlx::query("UPDATE users SET public_key = $1 WHERE username = $2")
         .bind(&payload.public_key)

@@ -7,6 +7,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Named
+import javax.inject.Singleton
 import tech.ziasvannes.safechat.data.local.SafeChatDatabase
 import tech.ziasvannes.safechat.data.local.dao.ContactDao
 import tech.ziasvannes.safechat.data.local.dao.MessageDao
@@ -16,13 +18,11 @@ import tech.ziasvannes.safechat.data.repository.MessageRepositoryImpl
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
-import javax.inject.Named
-import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-    
+
     /**
      * Provides a singleton instance of the SafeChat Room database.
      *
@@ -30,62 +30,57 @@ object DatabaseModule {
      */
     @Provides
     @Singleton
-    fun provideDatabase(
-        @ApplicationContext context: Context
-    ): SafeChatDatabase = Room.databaseBuilder(
-        context,
-        SafeChatDatabase::class.java,
-        "safechat.db"
-    ).build()
-    
+    fun provideDatabase(@ApplicationContext context: Context): SafeChatDatabase =
+            Room.databaseBuilder(context, SafeChatDatabase::class.java, "safechat.db")
+                    .build()
+
     /**
      * Provides an instance of ContactDao from the SafeChatDatabase.
      *
      * @param database The Room database instance used to access DAOs.
      * @return The ContactDao for performing contact-related database operations.
      */
-    @Provides
-    fun provideContactDao(database: SafeChatDatabase): ContactDao = database.contactDao()
-    
+    @Provides fun provideContactDao(database: SafeChatDatabase): ContactDao = database.contactDao()
+
     /**
      * Provides the MessageDao for accessing message data in the SafeChat database.
      *
      * @param database The SafeChatDatabase instance from which to obtain the DAO.
      * @return The MessageDao used for message-related database operations.
      */
-    @Provides
-    fun provideMessageDao(database: SafeChatDatabase): MessageDao = database.messageDao()
-    
+    @Provides fun provideMessageDao(database: SafeChatDatabase): MessageDao = database.messageDao()
+
     /**
-         * Provides the singleton "real" implementation of ContactRepository for dependency injection.
-         *
-         * @return The ContactRepository implementation that manages contact data using the provided ContactDao.
-         */
+     * Provides the singleton "real" implementation of ContactRepository for dependency injection.
+     *
+     * @return The ContactRepository implementation that manages contact data using the provided
+     * ContactDao.
+     */
     @Provides
     @Singleton
     @Named("real")
     fun provideContactRepository(contactDao: ContactDao): ContactRepository =
-        ContactRepositoryImpl(contactDao)
-    
+            ContactRepositoryImpl(contactDao)
+
     /**
-         * Provides the singleton "real" implementation of MessageRepository for message data management.
-         *
-         * @return The MessageRepository implementation backed by the provided MessageDao.
-         */
+     * Provides the singleton "real" implementation of MessageRepository for message data
+     * management.
+     *
+     * @return The MessageRepository implementation backed by the provided MessageDao.
+     */
     @Provides
     @Singleton
     @Named("real")
     fun provideMessageRepository(messageDao: MessageDao): MessageRepository =
-        MessageRepositoryImpl(messageDao)
-        
+            MessageRepositoryImpl(messageDao)
+
     /**
-         * Provides the singleton "real" implementation of [EncryptionRepository].
-         *
-         * @return The real [EncryptionRepository] instance.
-         */
+     * Provides the singleton "real" implementation of [EncryptionRepository].
+     *
+     * @return The real [EncryptionRepository] instance.
+     */
     @Provides
     @Singleton
     @Named("real")
-    fun provideEncryptionRepository(): EncryptionRepository =
-        EncryptionRepositoryImpl()
+    fun provideEncryptionRepository(): EncryptionRepository = EncryptionRepositoryImpl()
 }

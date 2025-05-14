@@ -13,6 +13,6 @@ data class ChatState(
     val error: String? = null,
     val messageText: String = "",
     val encryptionStatus: EncryptionStatus? = EncryptionStatus.NOT_ENCRYPTED,
-    val currentUserId: UUID = UUID.randomUUID(),
+    val currentUserId: UUID,
     val isEncrypted: Boolean = encryptionStatus == EncryptionStatus.ENCRYPTED
 )

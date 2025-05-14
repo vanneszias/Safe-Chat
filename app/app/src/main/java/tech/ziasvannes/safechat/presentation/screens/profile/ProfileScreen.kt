@@ -305,11 +305,12 @@ fun ProfileScreen(
 @Preview(showBackground = true)
 @Composable
 fun ProfileScreenPreview() {
+    val context = LocalContext.current
     SafeChatTheme {
         Surface {
             ProfileScreen(
                 onNavigateBack = {},
-                viewModel = PreviewProfileViewModel()
+                viewModel = PreviewProfileViewModel(context)
             )
         }
     }

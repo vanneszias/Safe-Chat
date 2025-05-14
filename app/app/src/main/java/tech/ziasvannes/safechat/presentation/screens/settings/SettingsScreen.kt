@@ -30,7 +30,6 @@ import kotlinx.coroutines.flow.asStateFlow
  * Presents appearance, notification, privacy, and about settings, allowing users to toggle features, view app information, and perform actions such as clearing messages or resetting settings. Handles user interactions, confirmation dialogs for destructive actions, loading and error feedback, and navigation.
  *
  * @param onNavigateBack Callback invoked when the user requests to navigate back from the settings screen.
- * @param onNavigateToTestSettings Callback invoked when the user requests to navigate to test settings screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
@@ -39,12 +38,10 @@ import kotlinx.coroutines.flow.asStateFlow
  * Presents toggles and actions for various user preferences, including dark mode, notifications, message retention, database encryption, and developer test settings. Supports destructive actions with confirmation dialogs and displays error messages as snackbars. Navigation callbacks allow returning to the previous screen and accessing test mode settings.
  *
  * @param onNavigateBack Callback invoked when the user requests to navigate back.
- * @param onNavigateToTestSettings Callback invoked when the user selects the test mode settings option.
  */
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToTestSettings: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -204,18 +201,6 @@ fun SettingsScreen(
                     description = "Permanently delete all messages",
                     icon = Icons.Default.Delete,
                     onClick = { showClearMessagesDialog = true }
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Developer section - Added for test settings
-            SettingsSection("Developer") {
-                SettingItem(
-                    title = "Test Mode Settings",
-                    description = "Configure test data and features for development",
-                    icon = Icons.Default.Lock, // TODO: Code
-                    onClick = onNavigateToTestSettings
                 )
             }
             
@@ -450,7 +435,6 @@ fun SettingsScreenPreview() {
         Surface {
             SettingsScreen(
                 onNavigateBack = {},
-                onNavigateToTestSettings = {},
                 viewModel = FakeSettingsViewModel(state)
             )
         }
