@@ -9,7 +9,6 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import tech.ziasvannes.safechat.data.models.MessageType
@@ -78,16 +77,10 @@ constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             try {
-                // Get all chat sessions and find the one with the given ID
-                val chatSessions = messageRepository.getChatSessions().first()
-                val chatSession = chatSessions.find { it.id == chatSessionId }
-                val currentUserId = state.value.currentUserId
-                val contactId = chatSession?.participantIds?.firstOrNull { it != currentUserId }
-                val contact = contactId?.let { contactRepository.getContactById(it) }
+                val contact = contactRepository.getContactById(chatSessionId)
                 _state.update {
                     it.copy(contact = contact, contactName = contact?.name ?: "", isLoading = false)
                 }
-
                 // Start observing messages for the chat session
                 messageRepository.getMessages(chatSessionId).collect { messages ->
                     _state.update { it.copy(messages = messages) }
@@ -120,7 +113,10 @@ constructor(
                                 receiverId = contact.id,
                                 type = MessageType.Text
                         )
-                        .onSuccess { _state.update { it.copy(messageText = "") } }
+                        .onSuccess {
+                            _state.update { it.copy(messageText = "") }
+                            loadChat(contact.id)
+                        }
                         .onFailure { error -> _state.update { it.copy(error = error.message) } }
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message ?: "Failed to send message") }

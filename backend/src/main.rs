@@ -27,7 +27,8 @@ async fn health_check() -> impl axum::response::IntoResponse {
 /// ```no_run
 /// // Run the server (typically executed as the main entry point)
 /// tokio::main(main());
-/// ```async fn main() {
+/// ```
+async fn main() {
     dotenv().ok();
     tracing_subscriber::fmt::init();
 
