@@ -62,7 +62,8 @@
       "id": "uuid-string",
       "username": "string",
       "public_key": "string",
-      "created_at": "string"
+      "created_at": "string",
+      "avatar": "base64-string (optional)"
     }
     ```
   - `401 Unauthorized` if token is missing or invalid
@@ -77,9 +78,35 @@
 
 ---
 
+## User Lookup
+
+### Get User by Public Key
+
+- **GET** `/user/{public_key}`
+- **Headers:**
+  - `Authorization: Bearer <jwt_token>` (required)
+- **Description:**
+  - Returns user info for the given public key. Only accessible to authenticated users.
+- **Response:**
+  - `200 OK` with body:
+    ```json
+    {
+      "id": "uuid-string",
+      "username": "string",
+      "public_key": "string",
+      "created_at": "string",
+      "avatar": "base64-string (optional)"
+    }
+    ```
+  - `401 Unauthorized` if token is missing or invalid
+  - `404 Not Found` if no user with that public key exists
+
+---
+
 ## Notes
 
 - All endpoints expect and return JSON unless otherwise noted.
 - JWT tokens are returned on successful login and should be used for authenticated requests (future endpoints).
 - Registration also generates a public key for the user, returned in the response message (not as JSON).
 - The backend now returns the user UUID in the `/profile` endpoint and uses it as the JWT `sub` claim.
+- There is **no endpoint to list all users or fetch by user id** for privacy and security reasons.

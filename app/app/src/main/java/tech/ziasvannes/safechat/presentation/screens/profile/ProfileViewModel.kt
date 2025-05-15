@@ -1,9 +1,16 @@
 package tech.ziasvannes.safechat.presentation.screens.profile
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import android.util.Base64
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,13 +21,6 @@ import tech.ziasvannes.safechat.data.remote.ApiService
 import tech.ziasvannes.safechat.data.remote.ProfileResponse
 import tech.ziasvannes.safechat.data.remote.UpdateProfileRequest
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.ImageDecoder
-import android.os.Build
-import android.provider.MediaStore
-import java.io.ByteArrayOutputStream
-import android.util.Base64
 
 @HiltViewModel
 open class ProfileViewModel
@@ -41,8 +41,8 @@ constructor(
      * Processes profile-related events and updates the profile state based on the event type.
      *
      * Handles actions such as loading profile data, toggling edit mode, updating the username,
-     * saving changes, selecting a new avatar, toggling public key visibility, generating a new key pair,
-     * and clearing error messages.
+     * saving changes, selecting a new avatar, toggling public key visibility, generating a new key
+     * pair, and clearing error messages.
      *
      * @param event The profile event to process.
      */
@@ -96,7 +96,7 @@ constructor(
                             userId = profile.id,
                             userName = profile.username,
                             userPublicKey = profile.public_key,
-                            avatarUrl = profile.avatar, // base64 string
+                            avatar = profile.avatar, // base64 string
                             isLoading = false
                     )
                 }
@@ -122,7 +122,7 @@ constructor(
                 apiService.updateProfile(
                         UpdateProfileRequest(
                                 username = state.value.userName,
-                                avatar = state.value.avatarUrl
+                                avatar = state.value.avatar
                         )
                 )
                 _state.update { it.copy(isLoading = false, isEditMode = false) }
@@ -135,9 +135,11 @@ constructor(
     }
 
     /**
-     * Updates the user's avatar in the profile state by converting the provided image URI to a base64-encoded string.
+     * Updates the user's avatar in the profile state by converting the provided image URI to a
+     * base64-encoded string.
      *
-     * If the image is successfully encoded, the avatar URL in the state is updated; otherwise, an error message is set.
+     * If the image is successfully encoded, the avatar URL in the state is updated; otherwise, an
+     * error message is set.
      *
      * @param context The context used to access image decoding resources.
      * @param uri The URI of the selected avatar image.
@@ -148,7 +150,7 @@ constructor(
             try {
                 val base64 = uriToBase64(context, uri)
                 if (base64 != null) {
-                    _state.update { it.copy(avatarUrl = base64, isLoading = false) }
+                    _state.update { it.copy(avatar = base64, isLoading = false) }
                 } else {
                     _state.update { it.copy(isLoading = false, error = "Failed to encode image") }
                 }
@@ -161,7 +163,8 @@ constructor(
     }
 
     /**
-     * Generates a new encryption key pair and updates the user's public key in both the backend and local profile state.
+     * Generates a new encryption key pair and updates the user's public key in both the backend and
+     * local profile state.
      *
      * Sets an error message in the profile state if key generation or backend update fails.
      */
@@ -191,8 +194,8 @@ constructor(
     /**
      * Converts an image URI to a base64-encoded JPEG string.
      *
-     * Loads the image referenced by the given URI, compresses it to JPEG format at 90% quality,
-     * and encodes the resulting byte array as a base64 string without line wraps.
+     * Loads the image referenced by the given URI, compresses it to JPEG format at 90% quality, and
+     * encodes the resulting byte array as a base64 string without line wraps.
      *
      * @param context The context used to access the content resolver.
      * @param uri The URI of the image to convert.
@@ -200,12 +203,13 @@ constructor(
      */
     private fun uriToBase64(context: Context, uri: Uri): String? {
         return try {
-            val bitmap = if (Build.VERSION.SDK_INT < 28) {
-                MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-            } else {
-                val source = ImageDecoder.createSource(context.contentResolver, uri)
-                ImageDecoder.decodeBitmap(source)
-            }
+            val bitmap =
+                    if (Build.VERSION.SDK_INT < 28) {
+                        MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                    } else {
+                        val source = ImageDecoder.createSource(context.contentResolver, uri)
+                        ImageDecoder.decodeBitmap(source)
+                    }
             val outputStream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
             val byteArray = outputStream.toByteArray()

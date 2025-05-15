@@ -8,7 +8,7 @@ data class Contact(
         val publicKey: String,
         val lastSeen: Long,
         val status: ContactStatus,
-        val avatarUrl: String?
+        val avatar: String? = null
 )
 
 enum class ContactStatus {

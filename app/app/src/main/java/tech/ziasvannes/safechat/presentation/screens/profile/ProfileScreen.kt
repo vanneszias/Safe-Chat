@@ -10,6 +10,7 @@ import android.util.Base64
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,9 +26,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,13 +36,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.Image
-import tech.ziasvannes.safechat.R
 import tech.ziasvannes.safechat.presentation.components.CustomTextField
 import tech.ziasvannes.safechat.presentation.components.LoadingDialog
 import tech.ziasvannes.safechat.presentation.preview.PreviewProfileViewModel
 import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
-import androidx.compose.ui.graphics.asImageBitmap
 
 /**
  * Displays the user profile screen with editable profile information and security key management.
@@ -55,11 +53,16 @@ import androidx.compose.ui.graphics.asImageBitmap
  */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
- * Composable screen for viewing and editing the user's profile, including avatar, username, user ID, and cryptographic keys.
+ * Composable screen for viewing and editing the user's profile, including avatar, username, user
+ * ID, and cryptographic keys.
  *
- * Allows toggling between view and edit modes, updating the avatar via camera or gallery, copying the user ID and public key to the clipboard, and generating a new key pair with a warning about invalidating existing encrypted conversations. Handles loading and error states, and provides navigation back via the supplied callback.
+ * Allows toggling between view and edit modes, updating the avatar via camera or gallery, copying
+ * the user ID and public key to the clipboard, and generating a new key pair with a warning about
+ * invalidating existing encrypted conversations. Handles loading and error states, and provides
+ * navigation back via the supplied callback.
  *
- * @param onNavigateBack Callback invoked when the user requests to navigate back from the profile screen.
+ * @param onNavigateBack Callback invoked when the user requests to navigate back from the profile
+ * screen.
  */
 @Composable
 fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
@@ -74,9 +77,12 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
 
         // Camera launcher
         val cameraLauncher =
-                rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+                rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success
+                        ->
                         if (success && tempCameraUri != null) {
-                                viewModel.onEvent(ProfileEvent.OnAvatarSelected(context, tempCameraUri!!))
+                                viewModel.onEvent(
+                                        ProfileEvent.OnAvatarSelected(context, tempCameraUri!!)
+                                )
                         }
                 }
         // Gallery launcher
@@ -198,26 +204,40 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
                                                 },
                                 contentAlignment = Alignment.Center
                         ) {
-                                if (!state.avatarUrl.isNullOrBlank()) {
-                                        val imageBitmap = remember(state.avatarUrl) {
-                                                try {
-                                                        val decodedBytes = Base64.decode(state.avatarUrl, Base64.DEFAULT)
-                                                        BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)?.asImageBitmap()
-                                                } catch (e: Exception) {
-                                                        null
+                                if (!state.avatar.isNullOrBlank()) {
+                                        val imageBitmap =
+                                                remember(state.avatar) {
+                                                        try {
+                                                                val decodedBytes =
+                                                                        Base64.decode(
+                                                                                state.avatar,
+                                                                                Base64.DEFAULT
+                                                                        )
+                                                                BitmapFactory.decodeByteArray(
+                                                                                decodedBytes,
+                                                                                0,
+                                                                                decodedBytes.size
+                                                                        )
+                                                                        ?.asImageBitmap()
+                                                        } catch (e: Exception) {
+                                                                null
+                                                        }
                                                 }
-                                        }
                                         if (imageBitmap != null) {
                                                 Image(
                                                         bitmap = imageBitmap,
                                                         contentDescription = "Profile avatar",
-                                                        modifier = Modifier.size(120.dp).clip(CircleShape)
+                                                        modifier =
+                                                                Modifier.size(120.dp)
+                                                                        .clip(CircleShape)
                                                 )
                                         } else {
                                                 Icon(
                                                         imageVector = Icons.Default.Person,
                                                         contentDescription = "Profile avatar",
-                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        tint =
+                                                                MaterialTheme.colorScheme
+                                                                        .onSurfaceVariant,
                                                         modifier = Modifier.size(64.dp)
                                                 )
                                         }
@@ -300,7 +320,9 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
                                                                 }
                                                         ) {
                                                                 Icon(
-                                                                        Icons.Default.Favorite, // TODO PhotoCamera
+                                                                        Icons.Default
+                                                                                .Favorite, // TODO
+                                                                        // PhotoCamera
                                                                         contentDescription = null
                                                                 )
                                                                 Spacer(Modifier.width(8.dp))
@@ -587,9 +609,11 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
 }
 
 /**
- * Formats a string as a canonical UUID (8-4-4-4-12 dashed pattern) if it contains exactly 32 hexadecimal characters.
+ * Formats a string as a canonical UUID (8-4-4-4-12 dashed pattern) if it contains exactly 32
+ * hexadecimal characters.
  *
- * If the input string, after removing dashes, has 32 characters, it is reformatted as a standard UUID. Otherwise, the original string is returned.
+ * If the input string, after removing dashes, has 32 characters, it is reformatted as a standard
+ * UUID. Otherwise, the original string is returned.
  *
  * @param uuid The string to attempt to format as a UUID.
  * @return The formatted UUID string, or the original input if formatting is not possible.
