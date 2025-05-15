@@ -24,6 +24,13 @@ import tech.ziasvannes.safechat.data.models.ContactStatus
 import tech.ziasvannes.safechat.data.remote.ApiService
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
 
+/**
+ * Displays the UI for adding a new contact by public key.
+ *
+ * Shows a top app bar with a back button, an input field for the contact's public key, and an "Add Contact" button. Displays a loading indicator during contact creation and shows error messages in a snackbar. The add button is enabled only when the public key field is not blank.
+ *
+ * @param onNavigateBack Callback invoked to navigate back after a successful contact addition or when the back button is pressed.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
  * Displays the UI for adding a new contact, including input fields for name, public key, and
@@ -102,12 +109,27 @@ constructor(private val contactRepository: ContactRepository, private val apiSer
     private val _state = MutableStateFlow(AddContactState())
     val state: StateFlow<AddContactState> = _state.asStateFlow()
 
+    /**
+     * Updates the public key value in the current UI state.
+     *
+     * @param newKey The new public key input from the user.
+     */
     fun onPublicKeyChange(newKey: String) {
         _state.update { it.copy(publicKey = newKey) }
     }
+    /**
+     * Clears any error message from the current state.
+     */
     fun clearError() {
         _state.update { it.copy(error = null) }
     }
+    /**
+     * Attempts to add a new contact by fetching user details using the provided public key.
+     *
+     * If the public key is blank, updates the state with an error message. Otherwise, retrieves user information from the API, creates a new contact, and adds it to the repository. On success, invokes the provided callback. Updates the state with error information if the operation fails.
+     *
+     * @param onSuccess Callback invoked when the contact is successfully added.
+     */
     fun addContact(onSuccess: () -> Unit) {
         val current = _state.value
         if (current.publicKey.isBlank()) {

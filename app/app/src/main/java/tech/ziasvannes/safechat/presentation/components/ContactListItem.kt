@@ -47,6 +47,17 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  * @param onContactClicked Callback invoked when the contact row is clicked.
  * @param modifier Optional modifier for styling or layout adjustments.
  */
+/**
+ * Displays a contact item row with avatar, status indicator, name, status text, and last seen time.
+ *
+ * Shows the contact's avatar if available as a Base64-encoded image, otherwise displays a default icon.
+ * The status indicator reflects the contact's online status with a colored dot.
+ * The row is clickable and invokes the provided callback with the contact when selected.
+ *
+ * @param contact The contact to display.
+ * @param onContactClicked Callback invoked when the contact row is clicked.
+ * @param modifier Optional modifier for styling the row.
+ */
 @Composable
 fun ContactListItem(
         contact: Contact,
@@ -199,10 +210,9 @@ private fun formatLastSeen(timestamp: Long): String {
 }
 
 /**
- * Displays a preview of the ContactListItem composable with sample contacts in different statuses.
+ * Displays a Compose preview of the ContactListItem component with sample contacts in various statuses.
  *
- * Shows three example contacts (Online, Away, Offline) to demonstrate the appearance and behavior
- * of the contact list item UI component.
+ * Renders three example contacts (Online, Away, Offline) to showcase the visual appearance and behavior of the contact list item UI.
  */
 @Preview(showBackground = true)
 @Composable

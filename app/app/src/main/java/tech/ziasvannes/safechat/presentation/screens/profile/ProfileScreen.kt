@@ -53,16 +53,11 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
- * Composable screen for viewing and editing the user's profile, including avatar, username, user
- * ID, and cryptographic keys.
+ * Displays a composable screen for viewing and editing the user's profile, including avatar, username, user ID, and cryptographic keys.
  *
- * Allows toggling between view and edit modes, updating the avatar via camera or gallery, copying
- * the user ID and public key to the clipboard, and generating a new key pair with a warning about
- * invalidating existing encrypted conversations. Handles loading and error states, and provides
- * navigation back via the supplied callback.
+ * Supports toggling between view and edit modes, updating the avatar via camera or gallery, copying the user ID and public key to the clipboard, and generating a new key pair with a warning about invalidating existing encrypted conversations. Handles loading and error states, and provides navigation back via the supplied callback.
  *
- * @param onNavigateBack Callback invoked when the user requests to navigate back from the profile
- * screen.
+ * @param onNavigateBack Invoked when the user requests to navigate back from the profile screen.
  */
 @Composable
 fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {

@@ -39,10 +39,9 @@ object DatabaseModule {
         fun provideContactDao(database: SafeChatDatabase): ContactDao = database.contactDao()
 
         /**
-         * Provides the MessageDao for accessing message data in the SafeChat database.
+         * Provides an instance of MessageDao for accessing message data in the SafeChat database.
          *
-         * @param database The SafeChatDatabase instance from which to obtain the DAO.
-         * @return The MessageDao used for message-related database operations.
+         * @return The MessageDao for message-related database operations.
          */
         @Provides
         fun provideMessageDao(database: SafeChatDatabase): MessageDao = database.messageDao()

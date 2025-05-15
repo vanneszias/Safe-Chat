@@ -79,11 +79,9 @@ constructor(
     }
 
     /**
-     * Loads the user's profile data from the API and updates the UI state.
+     * Fetches the user's profile data from the API and updates the UI state.
      *
-     * Initiates an asynchronous request to fetch the user's profile, including ID, username, public
-     * key, and avatar (as a base64 string). Updates the state to reflect loading, success, or error
-     * conditions.
+     * Initiates an asynchronous request to retrieve the user's ID, username, public key, and avatar (as a base64 string). Updates the state to indicate loading, success, or error based on the outcome.
      */
     private fun loadProfile() {
         _state.update { it.copy(isLoading = true) }
@@ -109,10 +107,9 @@ constructor(
     }
 
     /**
-     * Saves the current user profile changes to the backend and updates the UI state accordingly.
+     * Persists the current user's profile changes to the backend and updates the UI state.
      *
-     * Sets a loading indicator during the save operation, disables edit mode on success, and
-     * updates the error state if the save fails.
+     * Sets a loading state during the operation. On success, disables edit mode; on failure, updates the error message in the state.
      */
     private fun saveProfile() {
         _state.update { it.copy(isLoading = true) }
@@ -135,14 +132,12 @@ constructor(
     }
 
     /**
-     * Updates the user's avatar in the profile state by converting the provided image URI to a
-     * base64-encoded string.
+     * Converts the provided image URI to a base64-encoded string and updates the user's avatar in the profile state.
      *
-     * If the image is successfully encoded, the avatar URL in the state is updated; otherwise, an
-     * error message is set.
+     * If encoding fails, updates the state with an error message.
      *
-     * @param context The context used to access image decoding resources.
-     * @param uri The URI of the selected avatar image.
+     * @param context Context used to access image decoding resources.
+     * @param uri URI of the selected avatar image.
      */
     private fun updateAvatar(context: Context, uri: Uri) {
         _state.update { it.copy(isLoading = true) }
@@ -192,14 +187,13 @@ constructor(
     }
 
     /**
-     * Converts an image URI to a base64-encoded JPEG string.
+     * Converts an image at the specified URI to a base64-encoded JPEG string.
      *
-     * Loads the image referenced by the given URI, compresses it to JPEG format at 90% quality, and
-     * encodes the resulting byte array as a base64 string without line wraps.
+     * Loads the image from the provided URI, compresses it as a JPEG at 90% quality, and encodes the result as a base64 string without line wraps.
      *
-     * @param context The context used to access the content resolver.
-     * @param uri The URI of the image to convert.
-     * @return The base64-encoded JPEG string, or null if the conversion fails.
+     * @param context Context used to access the content resolver.
+     * @param uri URI of the image to convert.
+     * @return Base64-encoded JPEG string, or null if the conversion fails.
      */
     private fun uriToBase64(context: Context, uri: Uri): String? {
         return try {
