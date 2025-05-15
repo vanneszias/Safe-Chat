@@ -75,7 +75,8 @@ pub struct SendMessageRequest {
 /// headers.insert("authorization", "Bearer <valid_jwt_token>".parse().unwrap());
 /// let user_id = extract_user_id_from_auth(&headers, "my_jwt_secret");
 /// assert!(user_id.is_ok() || user_id.is_err());
-/// ```fn extract_user_id_from_auth(
+/// ```
+fn extract_user_id_from_auth(
     req: &HeaderMap,
     jwt_secret: &str,
 ) -> Result<Uuid, (StatusCode, &'static str)> {
@@ -124,7 +125,8 @@ pub struct SendMessageRequest {
 ///     headers_with_valid_jwt()
 /// ).await;
 /// assert_eq!(response.status(), StatusCode::OK);
-/// ```pub async fn get_user_by_public_key(
+/// ```
+pub async fn get_user_by_public_key(
     Path(public_key): Path<String>,
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -194,7 +196,8 @@ pub struct SendMessageRequest {
 /// ```
 /// // Example Axum route registration:
 /// // router.route("/messages/send", post(send_message));
-/// ```pub async fn send_message(
+/// ```
+pub async fn send_message(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Json(payload): Json<SendMessageRequest>,
@@ -307,7 +310,8 @@ pub struct SendMessageRequest {
 ///     headers_with_valid_jwt()
 /// ).await;
 /// assert_eq!(response.status(), axum::http::StatusCode::OK);
-/// ```pub async fn get_messages_with_user(
+/// ```
+pub async fn get_messages_with_user(
     Path(user_id): Path<String>,
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
