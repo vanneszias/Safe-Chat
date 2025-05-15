@@ -1,10 +1,10 @@
 use crate::state::AppState;
-use axum::{
-    extract::{Json, Path, Request, State},
-    http::StatusCode,
-    http::header::AUTHORIZATION,
-    response::IntoResponse,
-};
+use axum::extract::{Json, Path, State};
+use axum::http::HeaderMap;
+use axum::http::StatusCode;
+use axum::http::header::AUTHORIZATION;
+use axum::response::IntoResponse;
+use base64;
 use jsonwebtoken::{DecodingKey, Validation, decode};
 use serde::Serialize;
 use sqlx::Row;
@@ -27,6 +27,28 @@ struct Claims {
     exp: usize,
 }
 
+#[derive(serde::Serialize)]
+pub struct MessageResponse {
+    pub id: String,
+    pub content: String,
+    pub timestamp: i64,
+    pub sender_id: String,
+    pub receiver_id: String,
+    pub status: String,
+    pub r#type: String,
+    pub encrypted_content: String,
+    pub iv: String,
+}
+
+#[derive(serde::Deserialize)]
+pub struct SendMessageRequest {
+    pub content: String,
+    pub receiver_id: String,
+    pub r#type: String,
+    pub encrypted_content: String,
+    pub iv: String,
+}
+
 /// Extracts and validates a user ID from a JWT Bearer token in the HTTP Authorization header.
 ///
 /// Returns the user UUID from the token's claims if the token is valid and properly formatted.  
@@ -43,13 +65,10 @@ struct Claims {
 /// assert!(user_id.is_ok() || user_id.is_err());
 /// ```
 fn extract_user_id_from_auth(
-    req: &Request,
+    req: &HeaderMap,
     jwt_secret: &str,
 ) -> Result<Uuid, (StatusCode, &'static str)> {
-    let auth_header = req
-        .headers()
-        .get(AUTHORIZATION)
-        .and_then(|h| h.to_str().ok());
+    let auth_header = req.get(AUTHORIZATION).and_then(|h| h.to_str().ok());
     let token = match auth_header.and_then(|h| h.strip_prefix("Bearer ")) {
         Some(t) => t,
         None => {
@@ -83,9 +102,9 @@ fn extract_user_id_from_auth(
 pub async fn get_user_by_public_key(
     Path(public_key): Path<String>,
     State(state): State<Arc<AppState>>,
-    req: Request,
+    headers: HeaderMap,
 ) -> impl IntoResponse {
-    let auth_result = extract_user_id_from_auth(&req, &state.jwt_secret);
+    let auth_result = extract_user_id_from_auth(&headers, &state.jwt_secret);
     let requesting_user = match auth_result {
         Ok(uid) => uid,
         Err(e) => {
@@ -141,13 +160,93 @@ pub async fn get_user_by_public_key(
 
 /// ```
 pub async fn send_message(
-    State(_state): State<Arc<AppState>>,
-    Json(_payload): Json<serde_json::Value>,
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(payload): Json<SendMessageRequest>,
 ) -> impl IntoResponse {
-    (
-        axum::http::StatusCode::OK,
-        "Send message endpoint (not implemented)",
+    // Extract token from Authorization header
+    let token = match headers
+        .get(AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+    {
+        Some(t) => t,
+        None => {
+            return (
+                StatusCode::UNAUTHORIZED,
+                "Missing or invalid Authorization header",
+            )
+                .into_response();
+        }
+    };
+    let sender_id = match decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(state.jwt_secret.as_bytes()),
+        &Validation::default(),
+    ) {
+        Ok(data) => data.claims.sub,
+        Err(_) => return (StatusCode::UNAUTHORIZED, "Invalid token").into_response(),
+    };
+    let receiver_id = match sqlx::types::Uuid::parse_str(&payload.receiver_id) {
+        Ok(uid) => uid,
+        Err(_) => {
+            return (StatusCode::BAD_REQUEST, "Invalid receiver_id format").into_response();
+        }
+    };
+    let id = sqlx::types::Uuid::new_v4();
+    let timestamp = chrono::Utc::now().timestamp();
+    let status = "SENT";
+    // Decode base64 fields
+    let encrypted_content = match base64::decode(&payload.encrypted_content) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                "Invalid base64 for encrypted_content",
+            )
+                .into_response();
+        }
+    };
+    let iv = match base64::decode(&payload.iv) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            return (StatusCode::BAD_REQUEST, "Invalid base64 for iv").into_response();
+        }
+    };
+    // Insert into DB
+    let res = sqlx::query(
+        "INSERT INTO messages (id, content, timestamp, sender_id, receiver_id, status, type, encrypted_content, iv) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
     )
+    .bind(id)
+    .bind(&payload.content)
+    .bind(timestamp)
+    .bind(sender_id)
+    .bind(receiver_id)
+    .bind(status)
+    .bind(&payload.r#type)
+    .bind(&encrypted_content)
+    .bind(&iv)
+    .execute(&state.db)
+    .await;
+    if let Err(e) = res {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response();
+    }
+    let response = MessageResponse {
+        id: id.to_string(),
+        content: payload.content,
+        timestamp,
+        sender_id: sender_id.to_string(),
+        receiver_id: receiver_id.to_string(),
+        status: status.to_string(),
+        r#type: payload.r#type,
+        encrypted_content: payload.encrypted_content,
+        iv: payload.iv,
+    };
+    (StatusCode::OK, Json(response)).into_response()
 }
 
 /// Placeholder endpoint for retrieving messages exchanged with a specific user.
@@ -160,11 +259,63 @@ pub async fn send_message(
 /// // This endpoint is not implemented and always returns a 200 OK status.
 /// ```
 pub async fn get_messages_with_user(
-    Path(_user_id): Path<String>,
-    State(_state): State<Arc<AppState>>,
+    Path(user_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
 ) -> impl IntoResponse {
-    (
-        axum::http::StatusCode::OK,
-        "Get messages with user endpoint (not implemented)",
+    // Authenticate user
+    let auth_result = extract_user_id_from_auth(&headers, &state.jwt_secret);
+    let requesting_user = match auth_result {
+        Ok(uid) => uid,
+        Err(e) => {
+            info!("Unauthorized access attempt to /messages/{{}} endpoint");
+            return e.into_response();
+        }
+    };
+    let other_user = match Uuid::parse_str(&user_id) {
+        Ok(uid) => uid,
+        Err(_) => {
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                "Invalid user_id format",
+            )
+                .into_response();
+        }
+    };
+    // Query messages between requesting_user and other_user
+    let rows = match sqlx::query(
+        "SELECT id, content, timestamp, sender_id, receiver_id, status, type, encrypted_content, iv FROM messages WHERE (sender_id = $1 AND receiver_id = $2) OR (sender_id = $2 AND receiver_id = $1) ORDER BY timestamp ASC"
     )
+    .bind(requesting_user)
+    .bind(other_user)
+    .fetch_all(&state.db)
+    .await {
+        Ok(records) => records,
+        Err(err) => {
+            info!("Database error in /messages/{{user_id}}: {}", err);
+            return (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Database error",
+            )
+                .into_response();
+        }
+    };
+    let messages: Vec<MessageResponse> = rows
+        .into_iter()
+        .map(|row| MessageResponse {
+            id: row.try_get::<Uuid, _>("id").unwrap().to_string(),
+            content: row.try_get::<String, _>("content").unwrap_or_default(),
+            timestamp: row.try_get::<i64, _>("timestamp").unwrap_or_default(),
+            sender_id: row.try_get::<Uuid, _>("sender_id").unwrap().to_string(),
+            receiver_id: row.try_get::<Uuid, _>("receiver_id").unwrap().to_string(),
+            status: row.try_get::<String, _>("status").unwrap_or_default(),
+            r#type: row.try_get::<String, _>("type").unwrap_or_default(),
+            encrypted_content: base64::encode(
+                row.try_get::<Vec<u8>, _>("encrypted_content")
+                    .unwrap_or_default(),
+            ),
+            iv: base64::encode(row.try_get::<Vec<u8>, _>("iv").unwrap_or_default()),
+        })
+        .collect();
+    (axum::http::StatusCode::OK, axum::Json(messages)).into_response()
 }
