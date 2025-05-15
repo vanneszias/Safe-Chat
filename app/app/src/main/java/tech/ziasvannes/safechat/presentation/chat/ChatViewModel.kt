@@ -65,13 +65,12 @@ constructor(
     }
 
     /**
-     * Loads contact details and observes messages for the specified chat session, updating the UI
-     * state accordingly.
+     * Loads contact details and observes messages for the specified chat session, updating the UI state.
      *
-     * If an error occurs during loading or message collection, updates the state with a
-     * user-friendly error message.
+     * Updates the state with contact information and continuously collects messages for the given chat session.
+     * If an error occurs, sets a user-friendly error message in the state.
      *
-     * @param chatSessionId The unique identifier of the chat session whose chat is to be loaded.
+     * @param chatSessionId The unique identifier of the chat session to load.
      */
     fun loadChat(chatSessionId: UUID) {
         viewModelScope.launch {
@@ -95,10 +94,9 @@ constructor(
     }
 
     /**
-     * Sends a text message to the current contact and updates the UI state based on the result.
+     * Sends a text message to the current contact and updates the chat state accordingly.
      *
-     * If the message is sent successfully, clears the message input field. If sending fails,
-     * updates the state with the error message.
+     * If the message is sent successfully, clears the message input and reloads the chat. If sending fails, updates the state with an error message.
      *
      * @param content The text content of the message to send.
      */
