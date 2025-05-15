@@ -39,7 +39,8 @@ async fn health_check() -> impl axum::response::IntoResponse {
 /// async fn main() {
 ///     main().await;
 /// }
-/// ```async fn main() {
+/// ```
+async fn main() {
     dotenv().ok();
     tracing_subscriber::fmt::init();
 
