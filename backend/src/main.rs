@@ -27,6 +27,18 @@ async fn health_check() -> impl axum::response::IntoResponse {
 /// ```no_run
 /// // Run the server (typically executed as the main entry point)
 /// tokio::main(main());
+/// Starts the Axum-based asynchronous web server, initializing environment, database, and routing.
+///
+/// Loads environment variables, sets up logging, connects to the PostgreSQL database, and configures the application state. Defines all HTTP routes and launches the server on the specified port, handling incoming requests indefinitely.
+///
+/// # Examples
+///
+/// ```
+/// // To run the server, simply execute the binary:
+/// #[tokio::main]
+/// async fn main() {
+///     main().await;
+/// }
 /// ```
 async fn main() {
     dotenv().ok();

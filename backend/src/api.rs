@@ -63,6 +63,18 @@ pub struct SendMessageRequest {
 ///     .unwrap();
 /// let user_id = extract_user_id_from_auth(&req, "mysecret");
 /// assert!(user_id.is_ok() || user_id.is_err());
+/// Extracts and validates a user UUID from a JWT Bearer token in the `Authorization` header.
+///
+/// Returns the user ID (`Uuid`) if the token is present, correctly formatted, and valid; otherwise returns an error with an appropriate HTTP status code.
+///
+/// # Examples
+///
+/// ```
+/// use axum::http::HeaderMap;
+/// let mut headers = HeaderMap::new();
+/// headers.insert("authorization", "Bearer <valid_jwt_token>".parse().unwrap());
+/// let user_id = extract_user_id_from_auth(&headers, "my_jwt_secret");
+/// assert!(user_id.is_ok() || user_id.is_err());
 /// ```
 fn extract_user_id_from_auth(
     req: &HeaderMap,
@@ -98,6 +110,21 @@ fn extract_user_id_from_auth(
 /// ```
 /// // Example Axum route registration:
 /// // app.route("/user/:public_key", get(get_user_by_public_key));
+/// Retrieves user information by public key, requiring JWT authentication.
+///
+/// Returns the user's details as JSON if found; otherwise, returns an appropriate HTTP error status.
+///
+/// # Examples
+///
+/// ```
+/// // Example Axum route usage:
+/// // GET /user/{public_key} with Authorization: Bearer <token>
+/// let response = get_user_by_public_key(
+///     Path("user_public_key_string".to_string()),
+///     State(app_state_arc),
+///     headers_with_valid_jwt()
+/// ).await;
+/// assert_eq!(response.status(), StatusCode::OK);
 /// ```
 pub async fn get_user_by_public_key(
     Path(public_key): Path<String>,
@@ -158,6 +185,17 @@ pub async fn get_user_by_public_key(
     (axum::http::StatusCode::OK, Json(user)).into_response()
 }
 
+/// Handles sending a new message from the authenticated user to a specified recipient.
+///
+/// Validates the JWT Bearer token from the `Authorization` header, parses and verifies the recipient's UUID,
+/// decodes base64-encoded encrypted content and IV, inserts the message into the database, and returns the stored message as JSON.
+/// Returns appropriate HTTP status codes for authorization failures, invalid input, decoding errors, or database errors.
+///
+/// # Examples
+///
+/// ```
+/// // Example Axum route registration:
+/// // router.route("/messages/send", post(send_message));
 /// ```
 pub async fn send_message(
     State(state): State<Arc<AppState>>,
@@ -257,6 +295,21 @@ pub async fn send_message(
 ///
 /// ```
 /// // This endpoint is not implemented and always returns a 200 OK status.
+/// Retrieves all messages exchanged between the authenticated user and the specified user.
+///
+/// Requires a valid JWT Bearer token in the `Authorization` header. Returns a JSON array of messages ordered by timestamp, with binary fields base64-encoded. Responds with appropriate HTTP status codes for authorization failures, invalid user IDs, or database errors.
+///
+/// # Examples
+///
+/// ```
+/// // Example Axum route usage:
+/// // GET /messages/{user_id} with Authorization header
+/// let response = get_messages_with_user(
+///     Path("target-user-uuid".to_string()),
+///     State(app_state_arc),
+///     headers_with_valid_jwt()
+/// ).await;
+/// assert_eq!(response.status(), axum::http::StatusCode::OK);
 /// ```
 pub async fn get_messages_with_user(
     Path(user_id): Path<String>,

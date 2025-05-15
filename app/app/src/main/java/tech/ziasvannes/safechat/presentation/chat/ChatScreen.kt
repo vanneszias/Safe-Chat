@@ -34,16 +34,12 @@ import tech.ziasvannes.safechat.presentation.components.MessageBubble
  */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
- * Displays the chat interface for a selected contact, including message history, input field, and
- * navigation controls.
+ * Composes the main chat screen UI for a given chat session.
  *
- * Shows a list of messages exchanged with the contact, an input area for composing new messages,
- * and UI elements for navigation and encryption status. Loading and error states are presented as
- * overlays when applicable.
+ * Displays the message history, input field for composing messages, navigation controls, and encryption status. Handles loading and error overlays as needed.
  *
- * @param chatSessionId The unique identifier of the chat session whose chat is displayed. If null,
- * defaults to the current chat context.
- * @param onNavigateBack Callback invoked when the back navigation icon is pressed.
+ * @param chatSessionId The unique identifier of the chat session to display, or null to use the current context.
+ * @param onNavigateBack Callback invoked when the user presses the back navigation icon.
  */
 @Composable
 fun ChatScreen(
