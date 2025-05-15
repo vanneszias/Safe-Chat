@@ -5,7 +5,7 @@ data class ProfileState(
         val userId: String = "",
         val userName: String = "",
         val userPublicKey: String = "",
-        val avatarUrl: String? = null,
+        val avatar: String? = null,
         val isLoading: Boolean = false,
         val error: String? = null,
         val isEditMode: Boolean = false,

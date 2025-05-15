@@ -12,12 +12,8 @@ import javax.inject.Singleton
 import tech.ziasvannes.safechat.data.local.SafeChatDatabase
 import tech.ziasvannes.safechat.data.local.dao.ContactDao
 import tech.ziasvannes.safechat.data.local.dao.MessageDao
-import tech.ziasvannes.safechat.data.repository.ContactRepositoryImpl
 import tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl
-import tech.ziasvannes.safechat.data.repository.MessageRepositoryImpl
-import tech.ziasvannes.safechat.domain.repository.ContactRepository
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
-import tech.ziasvannes.safechat.domain.repository.MessageRepository
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -50,31 +46,6 @@ object DatabaseModule {
          */
         @Provides
         fun provideMessageDao(database: SafeChatDatabase): MessageDao = database.messageDao()
-
-        /**
-         * Provides the singleton "real" implementation of ContactRepository for dependency
-         * injection.
-         *
-         * @return The ContactRepository implementation that manages contact data using the provided
-         * ContactDao.
-         */
-        @Provides
-        @Singleton
-        @Named("real")
-        fun provideContactRepository(contactDao: ContactDao): ContactRepository =
-                ContactRepositoryImpl(contactDao)
-
-        /**
-         * Provides the singleton "real" implementation of MessageRepository for message data
-         * management.
-         *
-         * @return The MessageRepository implementation backed by the provided MessageDao.
-         */
-        @Provides
-        @Singleton
-        @Named("real")
-        fun provideMessageRepository(messageDao: MessageDao): MessageRepository =
-                MessageRepositoryImpl(messageDao)
 
         /**
          * Provides the singleton "real" implementation of [EncryptionRepository].

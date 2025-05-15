@@ -1,18 +1,20 @@
 package tech.ziasvannes.safechat.data.repository
 
+import java.util.Base64
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import tech.ziasvannes.safechat.data.local.dao.MessageDao
-import tech.ziasvannes.safechat.data.local.entity.MessageEntity
+import kotlinx.coroutines.flow.flow
 import tech.ziasvannes.safechat.data.models.ChatSession
-import tech.ziasvannes.safechat.data.models.EncryptionStatus
 import tech.ziasvannes.safechat.data.models.Message
 import tech.ziasvannes.safechat.data.models.MessageStatus
+import tech.ziasvannes.safechat.data.models.MessageType
+import tech.ziasvannes.safechat.data.remote.ApiService
+import tech.ziasvannes.safechat.data.remote.MessageResponse
+import tech.ziasvannes.safechat.data.remote.SendMessageRequest
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
 
-class MessageRepositoryImpl @Inject constructor(private val messageDao: MessageDao) :
+class MessageRepositoryImpl @Inject constructor(private val apiService: ApiService) :
         MessageRepository {
     /**
      * Returns a flow emitting lists of messages for the specified chat session.
@@ -21,10 +23,10 @@ class MessageRepositoryImpl @Inject constructor(private val messageDao: MessageD
      * @return A flow that emits the current list of messages for the chat session, updating as the
      * data changes.
      */
-    override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> =
-            messageDao.getMessagesForChat(chatSessionId.toString()).map { entities ->
-                entities.map { it.toMessage() }
-            }
+    override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> = flow {
+        val messages = apiService.getMessages(chatSessionId.toString())
+        emit(messages.map { it.toMessage() })
+    }
 
     /**
      * Inserts a new message into the database and returns a [Result] containing the original
@@ -35,8 +37,9 @@ class MessageRepositoryImpl @Inject constructor(private val messageDao: MessageD
      * @return A [Result] containing the inserted message, or an error if insertion fails.
      */
     override suspend fun sendMessage(message: Message): Result<Message> = runCatching {
-        messageDao.insertMessage(MessageEntity.fromMessage(message))
-        message
+        val req = message.toSendMessageRequest()
+        val resp = apiService.sendMessage(req)
+        resp.toMessage()
     }
 
     /**
@@ -46,7 +49,7 @@ class MessageRepositoryImpl @Inject constructor(private val messageDao: MessageD
      * @param status The new status to set for the message.
      */
     override suspend fun updateMessageStatus(messageId: UUID, status: MessageStatus) {
-        messageDao.updateMessageStatus(messageId.toString(), status)
+        // Not implemented in remote mode
     }
 
     /**
@@ -59,9 +62,7 @@ class MessageRepositoryImpl @Inject constructor(private val messageDao: MessageD
      * @param messageId The unique identifier of the message to delete.
      */
     override suspend fun deleteMessage(messageId: UUID) {
-        messageDao.getMessagesForChat(messageId.toString()).collect { messages ->
-            messages.find { it.id == messageId.toString() }?.let { messageDao.deleteMessage(it) }
-        }
+        // Not implemented in remote mode
     }
 
     /**
@@ -73,21 +74,39 @@ class MessageRepositoryImpl @Inject constructor(private val messageDao: MessageD
      *
      * @return A flow emitting lists of chat sessions.
      */
-    override suspend fun getChatSessions(): Flow<List<ChatSession>> =
-            messageDao.getChatSessions().map { messages ->
-                messages.map { message ->
-                    ChatSession(
-                            id = UUID.randomUUID(), // Generate a unique ID for the session
-                            participantIds =
-                                    listOf(
-                                            UUID.fromString(message.senderId),
-                                            UUID.fromString(message.receiverId)
-                                    ),
-                            lastMessage = message.toMessage(),
-                            unreadCount = 0, // TODO: Implement unread count
-                            encryptionStatus =
-                                    EncryptionStatus.ENCRYPTED // TODO: Get actual encryption status
-                    )
-                }
-            }
+    override suspend fun getChatSessions(): Flow<List<ChatSession>> = flow {
+        // Not implemented: would require a backend endpoint for chat sessions
+        emit(emptyList())
+    }
 }
+
+private fun MessageResponse.toMessage(): Message =
+        Message(
+                id = UUID.fromString(id),
+                content = content,
+                timestamp = timestamp,
+                senderId = UUID.fromString(sender_id),
+                receiverId = UUID.fromString(receiver_id),
+                status = MessageStatus.valueOf(status),
+                type =
+                        when (type) {
+                            "Text" -> MessageType.Text
+                            else -> MessageType.Text // Extend for Image/File
+                        },
+                encryptedContent = Base64.getDecoder().decode(encrypted_content),
+                iv = Base64.getDecoder().decode(iv)
+        )
+
+private fun Message.toSendMessageRequest(): SendMessageRequest =
+        SendMessageRequest(
+                content = content,
+                receiver_id = receiverId.toString(),
+                type =
+                        when (type) {
+                            is MessageType.Text -> "Text"
+                            is MessageType.Image -> "Image"
+                            is MessageType.File -> "File"
+                        },
+                encrypted_content = Base64.getEncoder().encodeToString(encryptedContent),
+                iv = Base64.getEncoder().encodeToString(iv)
+        )

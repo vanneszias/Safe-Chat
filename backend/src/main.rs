@@ -1,7 +1,9 @@
+mod api;
 mod auth;
 mod crypto;
 mod state;
 
+use api::{get_messages_with_user, get_user_by_public_key, send_message};
 use auth::{get_profile, login, register, update_profile, update_public_key};
 use axum::{Router, routing::get};
 use dotenv::dotenv;
@@ -37,6 +39,15 @@ async fn main() {
         .route("/profile", axum::routing::get(get_profile))
         .route("/profile", axum::routing::put(update_profile))
         .route("/profile/key", axum::routing::put(update_public_key))
+        .route("/messages", axum::routing::post(send_message))
+        .route(
+            "/messages/:user_id",
+            axum::routing::get(get_messages_with_user),
+        )
+        .route(
+            "/user/:public_key",
+            axum::routing::get(get_user_by_public_key),
+        )
         .with_state(state);
 
     let port = std::env::var("SERVER_PORT").unwrap_or_else(|_| "8080".to_string());

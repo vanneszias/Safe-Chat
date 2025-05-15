@@ -1,5 +1,8 @@
 package tech.ziasvannes.safechat.presentation.components
 
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -62,18 +66,30 @@ fun ContactListItem(
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
         ) {
-            // If avatar URL is available, load it here
-            if (contact.avatarUrl != null) {
-                // Future implementation with image loading library like Coil
-                // For now, just display the placeholder
-                Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Avatar for ${contact.name}",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp)
-                )
+            if (contact.avatar != null) {
+                val imageBitmap =
+                        try {
+                            val decodedBytes = Base64.decode(contact.avatar, Base64.DEFAULT)
+                            BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                                    ?.asImageBitmap()
+                        } catch (e: Exception) {
+                            null
+                        }
+                if (imageBitmap != null) {
+                    Image(
+                            bitmap = imageBitmap,
+                            contentDescription = "Avatar for ${contact.name}",
+                            modifier = Modifier.size(24.dp)
+                    )
+                } else {
+                    Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Avatar for ${contact.name}",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                    )
+                }
             } else {
-                // Display placeholder avatar
                 Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = "Avatar for ${contact.name}",
@@ -202,7 +218,7 @@ fun ContactListItemPreview() {
                                 publicKey = "dummy_public_key",
                                 lastSeen = System.currentTimeMillis(),
                                 status = ContactStatus.ONLINE,
-                                avatarUrl = null
+                                avatar = null
                         )
                 ContactListItem(contact = onlineContact, onContactClicked = {})
 
@@ -216,7 +232,7 @@ fun ContactListItemPreview() {
                                         System.currentTimeMillis() -
                                                 15 * 60 * 1000, // 15 minutes ago
                                 status = ContactStatus.AWAY,
-                                avatarUrl = null
+                                avatar = null
                         )
                 ContactListItem(contact = awayContact, onContactClicked = {})
 
@@ -230,7 +246,7 @@ fun ContactListItemPreview() {
                                         System.currentTimeMillis() -
                                                 24 * 60 * 60 * 1000, // 1 day ago
                                 status = ContactStatus.OFFLINE,
-                                avatarUrl = null
+                                avatar = null
                         )
                 ContactListItem(contact = offlineContact, onContactClicked = {})
             }

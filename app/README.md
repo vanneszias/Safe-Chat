@@ -43,7 +43,7 @@ data class Contact(
     val publicKey: String,           // Public key used for encryption
     val lastSeen: Long,              // Timestamp of last activity
     val status: ContactStatus,       // Current online status
-    val avatarUrl: String?          // Optional profile picture URL
+    val avatar: String?              // Optional profile picture URL
 )
 
 data class Message(
