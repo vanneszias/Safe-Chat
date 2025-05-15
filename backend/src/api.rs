@@ -27,6 +27,21 @@ struct Claims {
     exp: usize,
 }
 
+/// Extracts and validates a user ID from a JWT Bearer token in the HTTP Authorization header.
+///
+/// Returns the user UUID from the token's claims if the token is valid and properly formatted.  
+/// Returns an error with `UNAUTHORIZED` status if the header is missing, malformed, or the token is invalid.
+///
+/// # Examples
+///
+/// ```
+/// let req = axum::http::Request::builder()
+///     .header("Authorization", "Bearer <valid_jwt>")
+///     .body(())
+///     .unwrap();
+/// let user_id = extract_user_id_from_auth(&req, "mysecret");
+/// assert!(user_id.is_ok() || user_id.is_err());
+/// ```
 fn extract_user_id_from_auth(
     req: &Request,
     jwt_secret: &str,
@@ -55,6 +70,16 @@ fn extract_user_id_from_auth(
     Ok(token_data.claims.sub)
 }
 
+/// Retrieves user information by public key, returning user details as JSON if found.
+///
+/// This endpoint requires a valid JWT Bearer token in the `Authorization` header. If the token is missing or invalid, an unauthorized response is returned. On success, the user matching the provided public key is returned as a JSON object. If no user is found, a 404 response is returned. In case of a database error, a 500 response is returned.
+///
+/// # Examples
+///
+/// ```
+/// // Example Axum route registration:
+/// // app.route("/user/:public_key", get(get_user_by_public_key));
+/// ```
 pub async fn get_user_by_public_key(
     Path(public_key): Path<String>,
     State(state): State<Arc<AppState>>,
@@ -114,6 +139,7 @@ pub async fn get_user_by_public_key(
     (axum::http::StatusCode::OK, Json(user)).into_response()
 }
 
+/// ```
 pub async fn send_message(
     State(_state): State<Arc<AppState>>,
     Json(_payload): Json<serde_json::Value>,
@@ -124,6 +150,15 @@ pub async fn send_message(
     )
 }
 
+/// Placeholder endpoint for retrieving messages exchanged with a specific user.
+///
+/// Currently not implemented; always returns HTTP 200 with a not implemented message.
+///
+/// # Examples
+///
+/// ```
+/// // This endpoint is not implemented and always returns a 200 OK status.
+/// ```
 pub async fn get_messages_with_user(
     Path(_user_id): Path<String>,
     State(_state): State<Arc<AppState>>,

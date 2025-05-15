@@ -17,11 +17,12 @@ import tech.ziasvannes.safechat.domain.repository.MessageRepository
 class MessageRepositoryImpl @Inject constructor(private val apiService: ApiService) :
         MessageRepository {
     /**
-     * Returns a flow emitting lists of messages for the specified chat session.
+     * Returns a flow that emits the list of messages for a given chat session, fetched from the remote API.
      *
-     * @param chatSessionId The unique identifier of the chat session.
-     * @return A flow that emits the current list of messages for the chat session, updating as the
-     * data changes.
+     * The flow emits the current set of messages for the specified chat session ID as retrieved from the remote service.
+     *
+     * @param chatSessionId Unique identifier of the chat session whose messages are to be fetched.
+     * @return A flow emitting the list of messages for the specified chat session.
      */
     override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> = flow {
         val messages = apiService.getMessages(chatSessionId.toString())
@@ -29,12 +30,11 @@ class MessageRepositoryImpl @Inject constructor(private val apiService: ApiServi
     }
 
     /**
-     * Inserts a new message into the database and returns a [Result] containing the original
-     * message.
+     * Sends a message via the remote API and returns the result.
      *
-     * Any exceptions during insertion are captured and wrapped in the [Result].
+     * Converts the provided [Message] to a request, sends it using the API, and maps the response back to a [Message]. Any errors encountered are captured and returned as a [Result] failure.
      *
-     * @return A [Result] containing the inserted message, or an error if insertion fails.
+     * @return A [Result] containing the sent message on success, or an error if the operation fails.
      */
     override suspend fun sendMessage(message: Message): Result<Message> = runCatching {
         val req = message.toSendMessageRequest()
@@ -43,36 +43,29 @@ class MessageRepositoryImpl @Inject constructor(private val apiService: ApiServi
     }
 
     /**
-     * Updates the status of a message identified by its UUID.
+     * Placeholder for updating the status of a message by its UUID.
      *
-     * @param messageId The unique identifier of the message to update.
-     * @param status The new status to set for the message.
+     * This method is not implemented in remote mode and performs no operation.
      */
     override suspend fun updateMessageStatus(messageId: UUID, status: MessageStatus) {
         // Not implemented in remote mode
     }
 
     /**
-     * Deletes a message with the specified ID from the database.
+     * Deletes a message by its unique identifier.
      *
-     * Attempts to find and remove the message by collecting messages for the chat session
-     * identified by the given message ID. Note: The use of message ID as a chat session ID may
-     * indicate a logic issue.
-     *
-     * @param messageId The unique identifier of the message to delete.
+     * Not implemented in remote mode; this method currently has no effect.
      */
     override suspend fun deleteMessage(messageId: UUID) {
         // Not implemented in remote mode
     }
 
     /**
-     * Returns a flow of chat sessions constructed from messages in the database.
+     * Returns a flow emitting an empty list of chat sessions.
      *
-     * Each chat session includes participant IDs, the last message, a placeholder unread count of
-     * zero, and an encryption status set to ENCRYPTED. The session ID is randomly generated for
-     * each session. Unread count and actual encryption status are not yet implemented.
+     * This method is a placeholder and does not retrieve chat sessions, as backend support is not implemented.
      *
-     * @return A flow emitting lists of chat sessions.
+     * @return A flow emitting an empty list.
      */
     override suspend fun getChatSessions(): Flow<List<ChatSession>> = flow {
         // Not implemented: would require a backend endpoint for chat sessions
@@ -80,7 +73,15 @@ class MessageRepositoryImpl @Inject constructor(private val apiService: ApiServi
     }
 }
 
-private fun MessageResponse.toMessage(): Message =
+/**
+         * Converts a [MessageResponse] from the remote API into a [Message] domain model.
+         *
+         * Decodes Base64-encoded encrypted content and IV, parses UUIDs, and maps status and type fields to their corresponding enums.
+         * Unknown or unsupported message types default to [MessageType.Text].
+         *
+         * @return The converted [Message] object.
+         */
+        private fun MessageResponse.toMessage(): Message =
         Message(
                 id = UUID.fromString(id),
                 content = content,
@@ -97,7 +98,14 @@ private fun MessageResponse.toMessage(): Message =
                 iv = Base64.getDecoder().decode(iv)
         )
 
-private fun Message.toSendMessageRequest(): SendMessageRequest =
+/**
+         * Converts a [Message] object to a [SendMessageRequest] for sending via the API.
+         *
+         * Encodes the encrypted content and initialization vector (IV) as Base64 strings and maps the message type to its string representation.
+         *
+         * @return A [SendMessageRequest] representing the message in the format expected by the remote API.
+         */
+        private fun Message.toSendMessageRequest(): SendMessageRequest =
         SendMessageRequest(
                 content = content,
                 receiver_id = receiverId.toString(),
