@@ -51,8 +51,12 @@ object DatabaseModule {
          *
          * @return The real [EncryptionRepository] instance.
          */
-        @Provides
         @Singleton
         @Named("real")
-        fun provideEncryptionRepository(): EncryptionRepository = EncryptionRepositoryImpl()
+        @Provides
+        fun provideEncryptionRepository(
+                @ApplicationContext context: Context
+        ): EncryptionRepository {
+                return EncryptionRepositoryImpl(context)
+        }
 }

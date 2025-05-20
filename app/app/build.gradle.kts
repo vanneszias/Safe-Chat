@@ -41,11 +41,14 @@ android {
 
     buildFeatures { compose = true }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14" // Set according to your BOM if needed
-    }
+    composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
 
-    packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+        }
+    }
 }
 
 // Configure Hilt for better compatibility
@@ -96,4 +99,10 @@ dependencies {
 
     // Coil for image loading
     implementation(libs.coil.compose)
+
+    // Bouncy Castle
+    implementation(libs.bouncycastle)
+
+    // AndroidX Security Crypto
+    implementation(libs.security.crypto)
 }

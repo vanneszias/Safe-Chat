@@ -1,6 +1,6 @@
 [versions]
 agp = "8.9.1"
-kotlin = "2.1.20" 
+kotlin = "2.1.20"
 ksp = "2.1.20-2.0.1"
 hilt = "2.56.2"
 room = "2.7.1"
@@ -16,9 +16,11 @@ lifecycleProcess = "2.9.0"
 activityCompose = "1.10.1"
 composeBom = "2025.05.00"
 desugarJdkLibs = "2.1.5"
-retrofit = "2.11.0"
-retrofitConverterGson = "2.11.0"
+retrofit = "3.0.0"
+retrofitConverterGson = "3.0.0"
 coil = "2.7.0"
+bouncycastle = "1.80"
+securityCrypto = "1.1.0-alpha06"
 
 [libraries]
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
@@ -48,6 +50,8 @@ android-desugarJdkLibs = { group = "com.android.tools", name = "desugar_jdk_libs
 retrofit2 = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit2-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofitConverterGson" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+bouncycastle = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
+security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 
 [plugins]
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

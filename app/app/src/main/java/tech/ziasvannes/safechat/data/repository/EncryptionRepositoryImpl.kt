@@ -1,181 +1,206 @@
 package tech.ziasvannes.safechat.data.repository
 
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
+import android.content.Context
+import android.content.SharedPreferences
 import android.util.Base64
-import com.google.crypto.tink.subtle.AesGcmJce
-import java.math.BigInteger
+import android.util.Log
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
-import java.security.KeyStore
 import java.security.PrivateKey
 import java.security.PublicKey
+import java.security.SecureRandom
+import java.security.spec.PKCS8EncodedKeySpec
+import java.security.spec.X509EncodedKeySpec
 import javax.crypto.KeyAgreement
-import javax.crypto.interfaces.DHPublicKey
-import javax.crypto.spec.DHParameterSpec
 import javax.inject.Inject
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 
-class EncryptionRepositoryImpl @Inject constructor() : EncryptionRepository {
-    private val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-    private val KEY_ALIAS = "SafeChatKeyPair"
+class EncryptionRepositoryImpl @Inject constructor(private val context: Context) :
+        EncryptionRepository {
+    private val PREFS_NAME = "safechat_x25519_keys"
+    private val PRIVATE_KEY_PREF = "private_key"
+    private val PUBLIC_KEY_PREF = "public_key"
 
-    /**
-     * Retrieves Diffie-Hellman (DH) parameters for key generation.
-     *
-     * Attempts to generate secure 2048-bit DH parameters dynamically. If generation fails, falls
-     * back to using the standardized 2048-bit MODP Group (RFC 3526 Group 14).
-     *
-     * @return A DHParameterSpec containing the prime modulus and generator for DH key exchange.
-     */
-    private fun getDHParameters(): DHParameterSpec {
-        // Use NIST's standardized 2048-bit DH parameters (SP 800-56A)
-        return try {
-            val dhKpg = KeyPairGenerator.getInstance("DH")
-            dhKpg.initialize(2048) // This will generate secure parameters
-            val kp = dhKpg.generateKeyPair()
-            (kp.public as DHPublicKey).params
-        } catch (e: Exception) {
-            // Fallback to RFC 3526 Group 14 (2048-bit MODP Group) if generation fails
-            DHParameterSpec(
-                    BigInteger(
-                            "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AAAC42DAD33170D04507A33A85521ABDF1CBA64ECFB850458DBEF0A8AEA71575D060C7DB3970F85A6E1E4C7ABF5AE8CDB0933D71E8C94E04A25619DCEE3D2261AD2EE6BF12FFA06D98A0864D87602733EC86A64521F2B18177B200CBBE117577A615D6C770988C0BAD946E208E24FA074E5AB3143DB5BFCE0FD108E4B82D120A93AD2CAFFFFFFFFFFFFFFFF",
-                            16
-                    ),
-                    BigInteger("2")
-            )
+    private val prefs: SharedPreferences by lazy {
+        val masterKey =
+                MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+        EncryptedSharedPreferences.create(
+                context,
+                PREFS_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
+    private suspend fun ensureKeyPairExists() {
+        if (prefs.getString(PRIVATE_KEY_PREF, null) == null ||
+                        prefs.getString(PUBLIC_KEY_PREF, null) == null
+        ) {
+            Log.w("EncryptionRepo", "Key pair missing, generating new key pair.")
+            generateKeyPair()
         }
     }
 
-    /**
-     * Generates a Diffie-Hellman key pair and stores it securely in the AndroidKeyStore.
-     *
-     * @return The generated DH key pair.
-     */
     override suspend fun generateKeyPair(): KeyPair {
-        val keyPairGenerator = KeyPairGenerator.getInstance("DH", "AndroidKeyStore")
-
-        val parameterSpec =
-                KeyGenParameterSpec.Builder(
-                                KEY_ALIAS,
-                                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-                        )
-                        .apply {
-                            setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
-                            setAlgorithmParameterSpec(getDHParameters())
-                            setKeySize(2048)
-                        }
-                        .build()
-
-        keyPairGenerator.initialize(parameterSpec)
-        return keyPairGenerator.generateKeyPair()
+        val keyPairGenerator = KeyPairGenerator.getInstance("X25519")
+        val keyPair = keyPairGenerator.generateKeyPair()
+        val privBytes = keyPair.private.encoded
+        val pubBytes = keyPair.public.encoded
+        Log.d(
+                "EncryptionRepo",
+                "Generated Public Key (Base64): ${Base64.encodeToString(pubBytes, Base64.NO_WRAP)}"
+        )
+        Log.d(
+                "EncryptionRepo",
+                "Generated Private Key (Base64): ${Base64.encodeToString(privBytes, Base64.NO_WRAP)}"
+        )
+        // Store keys
+        prefs.edit()
+                .putString(PRIVATE_KEY_PREF, Base64.encodeToString(privBytes, Base64.NO_WRAP))
+                .apply()
+        prefs.edit()
+                .putString(PUBLIC_KEY_PREF, Base64.encodeToString(pubBytes, Base64.NO_WRAP))
+                .apply()
+        return keyPair
     }
 
-    /**
-     * No-op for storing key pairs, as keys generated in AndroidKeyStore are automatically
-     * persisted.
-     */
     override suspend fun storeKeyPair(keyPair: KeyPair) {
-        // Keys are automatically stored in AndroidKeyStore when generated
+        // Not used; keys are stored on generation
     }
 
-    /**
-     * Retrieves the stored Diffie-Hellman public key from the AndroidKeyStore.
-     *
-     * @return The public key associated with the key alias.
-     */
     override suspend fun getPublicKey(): PublicKey {
-        val entry = keyStore.getEntry(KEY_ALIAS, null) as KeyStore.PrivateKeyEntry
-        return entry.certificate.publicKey
+        ensureKeyPairExists()
+        val pubB64 =
+                prefs.getString(PUBLIC_KEY_PREF, null)
+                        ?: throw IllegalStateException("No public key found")
+        Log.d("EncryptionRepo", "Loaded Public Key (Base64): $pubB64")
+        val pubBytes = Base64.decode(pubB64, Base64.NO_WRAP)
+        val keyFactory = KeyFactory.getInstance("X25519")
+        return keyFactory.generatePublic(X509EncodedKeySpec(pubBytes))
     }
 
-    /**
-     * Retrieves the Diffie-Hellman private key stored in the AndroidKeyStore.
-     *
-     * @return The stored private key associated with the predefined key alias.
-     */
     override suspend fun getPrivateKey(): PrivateKey {
-        val entry = keyStore.getEntry(KEY_ALIAS, null) as KeyStore.PrivateKeyEntry
-        return entry.privateKey
+        ensureKeyPairExists()
+        val privB64 =
+                prefs.getString(PRIVATE_KEY_PREF, null)
+                        ?: throw IllegalStateException("No private key found")
+        Log.d("EncryptionRepo", "Loaded Private Key (Base64): $privB64")
+        val privBytes = Base64.decode(privB64, Base64.NO_WRAP)
+        val keyFactory = KeyFactory.getInstance("X25519")
+        return keyFactory.generatePrivate(PKCS8EncodedKeySpec(privBytes))
     }
 
-    /**
-     * Computes a shared secret using the Diffie-Hellman key agreement protocol with the stored
-     * private key and a provided public key.
-     *
-     * @param publicKey The public key from the other party in the key exchange.
-     * @return The computed shared secret as a byte array.
-     */
     override suspend fun computeSharedSecret(publicKey: PublicKey): ByteArray {
+        ensureKeyPairExists()
         val privateKey = getPrivateKey()
-        val keyAgreement = KeyAgreement.getInstance("DH")
+        val keyAgreement = KeyAgreement.getInstance("X25519")
         keyAgreement.init(privateKey)
         keyAgreement.doPhase(publicKey, true)
-        return keyAgreement.generateSecret()
+        val sharedSecret = keyAgreement.generateSecret()
+        Log.d(
+                "EncryptionRepo",
+                "Computed Shared Secret (Base64): ${Base64.encodeToString(sharedSecret, Base64.NO_WRAP)}"
+        )
+        return sharedSecret
     }
 
-    /**
-     * Encrypts a plaintext message using AES-GCM with the provided shared secret.
-     *
-     * Generates a random 12-byte initialization vector (IV), encrypts the message using AES-GCM
-     * with the shared secret as the key, and returns a pair containing the encrypted bytes and the
-     * IV.
-     *
-     * @param message The plaintext message to encrypt.
-     * @param sharedSecret The shared secret key used for AES-GCM encryption.
-     * @return A pair consisting of the encrypted message bytes and the IV used for encryption.
-     */
     override suspend fun encryptMessage(
             message: String,
             sharedSecret: ByteArray
     ): Pair<ByteArray, ByteArray> {
-        val aesGcm = AesGcmJce(sharedSecret)
-        val iv = ByteArray(12).apply { java.security.SecureRandom().nextBytes(this) }
-        val encryptedBytes = aesGcm.encrypt(message.toByteArray(), iv)
-        return Pair(encryptedBytes, iv)
+        val key = javax.crypto.spec.SecretKeySpec(sharedSecret, "AES")
+        val iv = ByteArray(12).apply { SecureRandom().nextBytes(this) }
+        val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
+        val gcmSpec = javax.crypto.spec.GCMParameterSpec(128, iv)
+        cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, key, gcmSpec)
+        val ciphertext = cipher.doFinal(message.toByteArray(Charsets.UTF_8))
+        Log.d("EncryptionRepo", "Encrypting message: $message")
+        Log.d(
+                "EncryptionRepo",
+                "Ciphertext (Base64): ${Base64.encodeToString(ciphertext, Base64.NO_WRAP)}"
+        )
+        Log.d("EncryptionRepo", "IV (Base64): ${Base64.encodeToString(iv, Base64.NO_WRAP)}")
+        return Pair(ciphertext, iv)
     }
 
-    /**
-     * Decrypts AES-GCM encrypted data using the provided shared secret and initialization vector.
-     *
-     * @param encryptedContent The encrypted message bytes.
-     * @param iv The initialization vector used for encryption.
-     * @param sharedSecret The shared secret key for decryption.
-     * @return The decrypted message as a UTF-8 string.
-     */
     override suspend fun decryptMessage(
             encryptedContent: ByteArray,
             iv: ByteArray,
             sharedSecret: ByteArray
     ): String {
-        val aesGcm = AesGcmJce(sharedSecret)
-        val decryptedBytes = aesGcm.decrypt(encryptedContent, iv)
-        return String(decryptedBytes)
+        val key = javax.crypto.spec.SecretKeySpec(sharedSecret, "AES")
+        val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
+        val gcmSpec = javax.crypto.spec.GCMParameterSpec(128, iv)
+        cipher.init(javax.crypto.Cipher.DECRYPT_MODE, key, gcmSpec)
+        Log.d(
+                "EncryptionRepo",
+                "Decrypting Ciphertext (Base64): ${Base64.encodeToString(encryptedContent, Base64.NO_WRAP)}"
+        )
+        Log.d("EncryptionRepo", "IV (Base64): ${Base64.encodeToString(iv, Base64.NO_WRAP)}")
+        val plaintext = cipher.doFinal(encryptedContent)
+        val result = String(plaintext, Charsets.UTF_8)
+        Log.d("EncryptionRepo", "Decrypted message: $result")
+        return result
     }
 
-    /**
-     * Retrieves the stored public key as a Base64-encoded string.
-     *
-     * @return The Base64-encoded public key, or null if the key is unavailable.
-     */
     override suspend fun getCurrentPublicKey(): String? {
-        return try {
-            val publicKey = getPublicKey()
-            Base64.encodeToString(publicKey.encoded, Base64.NO_WRAP)
-        } catch (e: Exception) {
-            null
+        ensureKeyPairExists()
+        // Always export the X.509-encoded public key
+        val pubKey = getPublicKey()
+        val pubB64 = Base64.encodeToString(pubKey.encoded, Base64.NO_WRAP)
+        Log.d("EncryptionRepo", "getCurrentPublicKey (Base64, X.509): $pubB64")
+        return pubB64
+    }
+
+    override suspend fun generateNewKeyPair(): String {
+        generateKeyPair()
+        return getCurrentPublicKey()
+                ?: throw IllegalStateException("Failed to generate new key pair")
+    }
+
+    suspend fun publicKeyFromBase64(base64: String): PublicKey {
+        Log.d("EncryptionRepo", "publicKeyFromBase64 input: $base64")
+        val pubBytes = Base64.decode(base64, Base64.NO_WRAP)
+        val keyFactory = KeyFactory.getInstance("X25519")
+        // If the input is 32 bytes, it's a raw key, so wrap it in X.509 format
+        return if (pubBytes.size == 32) {
+            Log.w(
+                    "EncryptionRepo",
+                    "publicKeyFromBase64: Detected raw 32-byte key, wrapping as X.509"
+            )
+            val x509Header =
+                    byteArrayOf(
+                            0x30.toByte(),
+                            0x2a.toByte(),
+                            0x30.toByte(),
+                            0x05.toByte(),
+                            0x06.toByte(),
+                            0x03.toByte(),
+                            0x2b.toByte(),
+                            0x65.toByte(),
+                            0x6e.toByte(),
+                            0x03.toByte(),
+                            0x21.toByte(),
+                            0x00.toByte()
+                    )
+            val x509Bytes = x509Header + pubBytes
+            keyFactory.generatePublic(X509EncodedKeySpec(x509Bytes))
+        } else {
+            keyFactory.generatePublic(X509EncodedKeySpec(pubBytes))
         }
     }
 
-    /**
-     * Generates a new Diffie-Hellman key pair and returns the public key encoded as a Base64
-     * string.
-     *
-     * @return The Base64-encoded public key from the newly generated key pair.
-     */
-    override suspend fun generateNewKeyPair(): String {
-        val keyPair = generateKeyPair()
-        val publicKey = keyPair.public
-        return Base64.encodeToString(publicKey.encoded, Base64.NO_WRAP)
+    suspend fun decryptIncomingMessage(
+            senderPublicKeyBase64: String,
+            encryptedContent: ByteArray,
+            iv: ByteArray
+    ): String {
+        val senderPublicKey = publicKeyFromBase64(senderPublicKeyBase64)
+        val sharedSecret = computeSharedSecret(senderPublicKey)
+        return decryptMessage(encryptedContent, iv, sharedSecret)
     }
 }
