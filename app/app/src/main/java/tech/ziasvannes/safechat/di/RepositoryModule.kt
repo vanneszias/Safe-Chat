@@ -12,6 +12,8 @@ import tech.ziasvannes.safechat.data.repository.MessageRepositoryImpl
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -27,7 +29,7 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideEncryptionRepository(impl: EncryptionRepositoryImpl): EncryptionRepository = impl
+    fun provideEncryptionRepository(@ApplicationContext context: Context): EncryptionRepository = EncryptionRepositoryImpl(context)
 
     @Provides
     @Singleton

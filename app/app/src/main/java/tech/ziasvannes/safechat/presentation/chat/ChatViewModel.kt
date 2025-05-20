@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import tech.ziasvannes.safechat.data.models.MessageType
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
+import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
 import tech.ziasvannes.safechat.domain.usecase.InitiateKeyExchangeUseCase
 import tech.ziasvannes.safechat.domain.usecase.SendMessageUseCase
@@ -26,7 +27,8 @@ constructor(
         private val contactRepository: ContactRepository,
         private val sendMessageUseCase: SendMessageUseCase,
         private val initiateKeyExchangeUseCase: InitiateKeyExchangeUseCase,
-        private val userSession: UserSession
+        private val userSession: UserSession,
+        private val encryptionRepository: EncryptionRepository
 ) : ViewModel() {
 
     private val currentUserId: UUID
@@ -65,10 +67,11 @@ constructor(
     }
 
     /**
-     * Loads contact details and observes messages for the specified chat session, updating the UI state.
+     * Loads contact details and observes messages for the specified chat session, updating the UI
+     * state.
      *
-     * Updates the state with contact information and continuously collects messages for the given chat session.
-     * If an error occurs, sets a user-friendly error message in the state.
+     * Updates the state with contact information and continuously collects messages for the given
+     * chat session. If an error occurs, sets a user-friendly error message in the state.
      *
      * @param chatSessionId The unique identifier of the chat session to load.
      */
@@ -82,7 +85,39 @@ constructor(
                 }
                 // Start observing messages for the chat session
                 messageRepository.getMessages(chatSessionId).collect { messages ->
-                    _state.update { it.copy(messages = messages) }
+                    var atLeastOneDecrypted = false
+                    val decryptedMessages =
+                            if (contact != null) {
+                                messages.map { message ->
+                                    val decryptedText =
+                                            try {
+                                                encryptionRepository
+                                                        .let { repo ->
+                                                            (repo as?
+                                                                            tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
+                                                                    ?.decryptIncomingMessage(
+                                                                            senderPublicKeyBase64 =
+                                                                                    contact.publicKey,
+                                                                            encryptedContent =
+                                                                                    message.encryptedContent,
+                                                                            iv = message.iv
+                                                                    )
+                                                        }
+                                                        ?.also { atLeastOneDecrypted = true }
+                                                        ?: message.content
+                                            } catch (e: Exception) {
+                                                "[Decryption failed]"
+                                            }
+                                    message.copy(content = decryptedText)
+                                }
+                            } else messages
+                    val encryptionStatus =
+                            if (atLeastOneDecrypted)
+                                    tech.ziasvannes.safechat.data.models.EncryptionStatus.ENCRYPTED
+                            else tech.ziasvannes.safechat.data.models.EncryptionStatus.NOT_ENCRYPTED
+                    _state.update {
+                        it.copy(messages = decryptedMessages, encryptionStatus = encryptionStatus)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("ChatViewModel", "Error loading chat", e)
@@ -96,7 +131,8 @@ constructor(
     /**
      * Sends a text message to the current contact and updates the chat state accordingly.
      *
-     * If the message is sent successfully, clears the message input and reloads the chat. If sending fails, updates the state with an error message.
+     * If the message is sent successfully, clears the message input and reloads the chat. If
+     * sending fails, updates the state with an error message.
      *
      * @param content The text content of the message to send.
      */

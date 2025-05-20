@@ -30,6 +30,14 @@ constructor(
         userSession.userId = java.util.UUID.fromString(response.id)
         userSession.userPublicKey = response.public_key
         userSession.token = response.token
+        // Generate and upload our own key pair after registration
+        val newKeyPair = encryptionRepository.generateKeyPair()
+        val myPublicKeyB64 = java.util.Base64.getEncoder().encodeToString(newKeyPair.public.encoded)
+        // Update backend with our public key
+        apiService.updatePublicKey(
+                tech.ziasvannes.safechat.data.remote.UpdateKeyRequest(myPublicKeyB64)
+        )
+        userSession.userPublicKey = myPublicKeyB64
         return response
     }
 
