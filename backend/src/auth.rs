@@ -311,6 +311,16 @@ pub async fn login(
 /// assert_eq!(response.status(), 200);
 /// let profile: UserProfile = response.json().await.unwrap();
 /// assert_eq!(profile.username, "alice");
+/// Retrieves the authenticated user's profile information.
+///
+/// Extracts and validates the JWT token from the `Authorization` header, then fetches the user's profile data from the database. Returns the user's ID, username, public key, account creation timestamp, and optional avatar image (base64-encoded) as JSON. Responds with appropriate HTTP status codes for missing or invalid tokens, user not found, or database errors.
+///
+/// # Examples
+///
+/// ```
+/// // Example usage in an Axum route handler:
+/// let response = get_profile(state, request).await;
+/// assert_eq!(response.status(), StatusCode::OK);
 /// ```
 pub async fn get_profile(
     State(state): State<Arc<AppState>>,
@@ -404,6 +414,19 @@ pub async fn get_profile(
 /// // PATCH /api/profile/key
 /// // Authorization: Bearer <token>
 /// // Body: { "public_key": "base64-encoded-key" }
+/// Updates the authenticated user's public key.
+///
+/// Extracts and validates the JWT token from the `Authorization` header, parses the new public key from the JSON request body, and updates the user's public key in the database. Returns an appropriate HTTP status code and message based on the outcome.
+///
+/// # Examples
+///
+/// ```
+/// // Example request (pseudo-code)
+/// let req = Request::builder()
+///     .header("Authorization", "Bearer <token>")
+///     .body(r#"{"public_key": "new_key"}"#);
+/// let response = update_public_key(state, req).await;
+/// assert_eq!(response.status(), StatusCode::OK);
 /// ```
 pub async fn update_public_key(
     State(state): State<Arc<AppState>>,
@@ -475,6 +498,23 @@ pub async fn update_public_key(
 ///     .post("http://localhost:3000/profile")
 ///     .bearer_auth("your_jwt_token")
 ///     .json(&serde_json::json!({ "username": "newname", "avatar": "base64string" }))
+///     .send()
+///     .await
+///     .unwrap();
+/// assert_eq!(res.status(), 200);
+/// Updates the authenticated user's profile fields, such as username and avatar.
+///
+/// Accepts a JSON payload with optional `username` and/or base64-encoded `avatar` fields. Requires a valid JWT token in the `Authorization` header. Returns an error if no fields are provided, the avatar encoding is invalid, or the token is missing or invalid.
+///
+/// # Examples
+///
+/// ```
+/// // Example request using reqwest
+/// let client = reqwest::Client::new();
+/// let res = client
+///     .put("http://localhost:3000/profile")
+///     .bearer_auth("your_jwt_token")
+///     .json(&serde_json::json!({ "username": "newname" }))
 ///     .send()
 ///     .await
 ///     .unwrap();

@@ -313,6 +313,20 @@ pub async fn send_message(
 ///     headers_with_valid_jwt()
 /// ).await;
 /// assert_eq!(response.status(), axum::http::StatusCode::OK);
+/// Retrieves all messages exchanged between the authenticated user and the specified user.
+///
+/// Authenticates the request using the JWT Bearer token in the `Authorization` header. Returns a JSON array of messages ordered by timestamp, with encrypted content and IV fields base64-encoded. Responds with 401 if authentication fails, 400 if the user ID is invalid, or 500 on database errors.
+///
+/// # Examples
+///
+/// ```
+/// // Example Axum route usage:
+/// // GET /messages/{user_id}
+/// let response = get_messages_with_user(
+///     Path("target-user-uuid".to_string()),
+///     State(app_state_arc),
+///     headers
+/// ).await;
 /// ```
 pub async fn get_messages_with_user(
     Path(user_id): Path<String>,
@@ -379,6 +393,24 @@ pub async fn get_messages_with_user(
 /// Returns a JSON dump of all users, contacts, and messages for admin viewing.
 /// No authentication required (for demo purposes).
 #[axum::debug_handler]
+/// Returns a JSON dump of all users, contacts, and messages in the database.
+///
+/// This endpoint retrieves all records from the `users`, `contacts`, and `messages` tables,
+/// encoding binary fields such as avatars and encrypted content as base64 strings. No authentication is required.
+/// If any query fails, the corresponding section in the response will be an empty array.
+///
+/// # Examples
+///
+/// ```
+/// // Example Axum route registration:
+/// router.route("/admin/db_dump", get(db_dump));
+/// // GET /admin/db_dump returns:
+/// // {
+/// //   "users": [ ... ],
+/// //   "contacts": [ ... ],
+/// //   "messages": [ ... ]
+/// // }
+/// ```
 pub async fn db_dump(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     // Fetch users
     let users =
