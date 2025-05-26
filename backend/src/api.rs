@@ -5,8 +5,11 @@ use axum::http::StatusCode;
 use axum::http::header::AUTHORIZATION;
 use axum::response::IntoResponse;
 use base64;
+use base64::Engine;
+use base64::engine::general_purpose;
 use jsonwebtoken::{DecodingKey, Validation, decode};
 use serde::Serialize;
+use serde_json::json;
 use sqlx::Row;
 use sqlx::types::Uuid;
 use std::sync::Arc;
@@ -371,4 +374,101 @@ pub async fn get_messages_with_user(
         })
         .collect();
     (axum::http::StatusCode::OK, axum::Json(messages)).into_response()
+}
+
+/// Returns a JSON dump of all users, contacts, and messages for admin viewing.
+/// No authentication required (for demo purposes).
+#[axum::debug_handler]
+pub async fn db_dump(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    // Fetch users
+    let users =
+        match sqlx::query(r#"SELECT id, username, public_key, created_at, avatar FROM users"#)
+            .fetch_all(&state.db)
+            .await
+        {
+            Ok(rows) => rows
+                .into_iter()
+                .map(|row| {
+                    let id: sqlx::types::Uuid = row.try_get("id").unwrap();
+                    let username: String = row.try_get("username").unwrap();
+                    let public_key: String = row.try_get("public_key").unwrap();
+                    let created_at: chrono::DateTime<chrono::Utc> =
+                        row.try_get("created_at").unwrap();
+                    let avatar: Option<Vec<u8>> = row.try_get("avatar").ok().flatten();
+                    json!({
+                        "id": id,
+                        "username": username,
+                        "public_key": public_key,
+                        "created_at": created_at,
+                        "avatar": avatar.map(|a| general_purpose::STANDARD.encode(a)),
+                    })
+                })
+                .collect::<Vec<_>>(),
+            Err(_) => vec![],
+        };
+    // Fetch contacts
+    let contacts = match sqlx::query(
+        r#"SELECT id, name, public_key, last_seen, status, avatar_url FROM contacts"#,
+    )
+    .fetch_all(&state.db)
+    .await
+    {
+        Ok(rows) => rows
+            .into_iter()
+            .map(|row| {
+                let id: sqlx::types::Uuid = row.try_get("id").unwrap();
+                let name: String = row.try_get("name").unwrap();
+                let public_key: String = row.try_get("public_key").unwrap();
+                let last_seen: Option<chrono::DateTime<chrono::Utc>> =
+                    row.try_get("last_seen").ok().flatten();
+                let status: Option<String> = row.try_get("status").ok().flatten();
+                let avatar_url: Option<String> = row.try_get("avatar_url").ok().flatten();
+                json!({
+                    "id": id,
+                    "name": name,
+                    "public_key": public_key,
+                    "last_seen": last_seen,
+                    "status": status,
+                    "avatar_url": avatar_url,
+                })
+            })
+            .collect::<Vec<_>>(),
+        Err(_) => vec![],
+    };
+    // Fetch messages
+    let messages = match sqlx::query(r#"SELECT id, content, timestamp, sender_id, receiver_id, status, type, encrypted_content, iv FROM messages"#)
+        .fetch_all(&state.db)
+        .await {
+            Ok(rows) => rows.into_iter().map(|row| {
+                let id: sqlx::types::Uuid = row.try_get("id").unwrap();
+                let content: Option<String> = row.try_get("content").ok().flatten();
+                let timestamp: Option<i64> = row.try_get("timestamp").ok().flatten();
+                let sender_id: sqlx::types::Uuid = row.try_get("sender_id").unwrap();
+                let receiver_id: sqlx::types::Uuid = row.try_get("receiver_id").unwrap();
+                let status: Option<String> = row.try_get("status").ok().flatten();
+                let r#type: Option<String> = row.try_get("type").ok().flatten();
+                let encrypted_content: Option<Vec<u8>> = row.try_get("encrypted_content").ok().flatten();
+                let iv: Option<Vec<u8>> = row.try_get("iv").ok().flatten();
+                json!({
+                    "id": id,
+                    "content": content,
+                    "timestamp": timestamp,
+                    "sender_id": sender_id,
+                    "receiver_id": receiver_id,
+                    "status": status,
+                    "type": r#type,
+                    "encrypted_content": encrypted_content.map(|ec| general_purpose::STANDARD.encode(ec)),
+                    "iv": iv.map(|iv| general_purpose::STANDARD.encode(iv)),
+                })
+            }).collect::<Vec<_>>(),
+            Err(_) => vec![],
+        };
+    (
+        StatusCode::OK,
+        Json(json!({
+            "users": users,
+            "contacts": contacts,
+            "messages": messages,
+        })),
+    )
 }

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Database Table Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2em;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-bottom: 2em;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 0.5em;
+            text-align: left;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        h2 {
+            margin-top: 2em;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Database Table Viewer</h1>
+        <div id="content">Loading...</div>
+    </div>
+    <script>
+        async function fetchDbDump() {
+            const res = await fetch('/admin/dbdump');
+            if (!res.ok) {
+                document.getElementById('content').innerText = 'Failed to load database dump.';
+                return;
+            }
+            const data = await res.json();
+            let html = '';
+            function renderTable(title, rows) {
+                if (!rows.length) return `<h2>${title}</h2><p>No data.</p>`;
+                const cols = Object.keys(rows[0]);
+                let t = `<h2>${title}</h2><table><thead><tr>`;
+                for (const c of cols) t += `<th>${c}</th>`;
+                t += '</tr></thead><tbody>';
+                for (const row of rows) {
+                    t += '<tr>';
+                    for (const c of cols) t += `<td>${row[c] ?? ''}</td>`;
+                    t += '</tr>';
+                }
+                t += '</tbody></table>';
+                return t;
+            }
+            html += renderTable('Users', data.users);
+            html += renderTable('Contacts', data.contacts);
+            html += renderTable('Messages', data.messages);
+            document.getElementById('content').innerHTML = html;
+        }
+        fetchDbDump();
+    </script>
+</body>
+
+</html>
