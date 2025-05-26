@@ -3,14 +3,14 @@ mod auth;
 mod crypto;
 mod state;
 
-use api::{get_messages_with_user, get_user_by_public_key, send_message};
+use api::{db_dump, get_messages_with_user, get_user_by_public_key, send_message};
 use auth::{get_profile, login, register, update_profile, update_public_key};
 use axum::{Router, routing::get};
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use state::AppState;
 use std::sync::Arc;
-use tokio::net::TcpListener;
+use tower_http::services::ServeFile;
 use tracing_subscriber;
 
 async fn health_check() -> impl axum::response::IntoResponse {
@@ -69,13 +69,16 @@ async fn main() {
             "/user/:public_key",
             axum::routing::get(get_user_by_public_key),
         )
+        .route("/admin/dbdump", get(db_dump))
+        .nest_service("/admin/dbtable.html", ServeFile::new("src/dbtable.html"))
+        .nest_service("/", ServeFile::new("src/dbtable.html"))
         .with_state(state);
 
     let port = std::env::var("SERVER_PORT").unwrap_or_else(|_| "8080".to_string());
     let addr = format!("0.0.0.0:{}", port);
-    let listener = TcpListener::bind(&addr)
-        .await
-        .expect("Failed to bind address");
     tracing::info!("listening on {}", addr);
-    axum::serve(listener, app).await.unwrap();
+    axum::Server::bind(&addr.parse().unwrap())
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }

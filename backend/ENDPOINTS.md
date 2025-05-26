@@ -110,3 +110,13 @@
 - Registration also generates a public key for the user, returned in the response message (not as JSON).
 - The backend now returns the user UUID in the `/profile` endpoint and uses it as the JWT `sub` claim.
 - There is **no endpoint to list all users or fetch by user id** for privacy and security reasons.
+
+## /admin/dbdump
+- Method: GET
+- Returns: JSON dump of all users, contacts, and messages in the database.
+- Auth: None (for demo/admin use only)
+
+## /admin/dbtable.html (static)
+- Method: GET
+- Returns: Simple HTML page displaying the database contents in a table, fetched from /admin/dbdump.
+- Auth: None (for demo/admin use only)
