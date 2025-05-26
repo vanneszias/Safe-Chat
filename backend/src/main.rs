@@ -13,6 +13,14 @@ use std::sync::Arc;
 use tower_http::services::ServeFile;
 use tracing_subscriber;
 
+/// Returns a 200 OK response for health check endpoints.
+///
+/// # Examples
+///
+/// ```
+/// let response = health_check().await;
+/// assert_eq!(response.into_response().status(), axum::http::StatusCode::OK);
+/// ```
 async fn health_check() -> impl axum::response::IntoResponse {
     (axum::http::StatusCode::OK, "OK")
 }
@@ -38,6 +46,20 @@ async fn health_check() -> impl axum::response::IntoResponse {
 /// #[tokio::main]
 /// async fn main() {
 ///     main().await;
+/// }
+/// Initializes and runs the Axum web server with PostgreSQL integration and JWT authentication.
+///
+/// Loads environment variables, sets up logging, connects to the database, configures application state, and defines all HTTP routes. The server listens on the port specified by the `SERVER_PORT` environment variable or defaults to 8080. Panics if required environment variables are missing or if the server fails to start.
+///
+/// # Examples
+///
+/// ```no_run
+/// // To start the server, run the compiled binary:
+/// // $ DATABASE_URL=postgres://... JWT_SECRET=... cargo run
+/// // The server will be accessible at http://localhost:8080/
+/// #[tokio::main]
+/// async fn main() {
+///     my_crate::main().await;
 /// }
 /// ```
 async fn main() {
