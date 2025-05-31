@@ -10,7 +10,7 @@ import tech.ziasvannes.safechat.data.local.entity.MessageEntity
 
 @Database(
         entities = [ContactEntity::class, MessageEntity::class],
-        version = 2,
+        version = 3,
         exportSchema = false
 )
 @TypeConverters(Converters::class)

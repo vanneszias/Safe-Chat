@@ -85,38 +85,18 @@ constructor(
                 }
                 // Start observing messages for the chat session
                 messageRepository.getMessages(chatSessionId).collect { messages ->
-                    var atLeastOneDecrypted = false
-                    val decryptedMessages =
-                            if (contact != null) {
-                                messages.map { message ->
-                                    val decryptedText =
-                                            try {
-                                                encryptionRepository
-                                                        .let { repo ->
-                                                            (repo as?
-                                                                            tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
-                                                                    ?.decryptIncomingMessage(
-                                                                            senderPublicKeyBase64 =
-                                                                                    contact.publicKey,
-                                                                            encryptedContent =
-                                                                                    message.encryptedContent,
-                                                                            iv = message.iv
-                                                                    )
-                                                        }
-                                                        ?.also { atLeastOneDecrypted = true }
-                                                        ?: message.content
-                                            } catch (e: Exception) {
-                                                "[Decryption failed]"
-                                            }
-                                    message.copy(content = decryptedText)
-                                }
-                            } else messages
-                    val encryptionStatus =
-                            if (atLeastOneDecrypted)
-                                    tech.ziasvannes.safechat.data.models.EncryptionStatus.ENCRYPTED
-                            else tech.ziasvannes.safechat.data.models.EncryptionStatus.NOT_ENCRYPTED
+                    // No need to decrypt here; messages already have decrypted content
                     _state.update {
-                        it.copy(messages = decryptedMessages, encryptionStatus = encryptionStatus)
+                        it.copy(
+                                messages = messages,
+                                encryptionStatus =
+                                        if (messages.any { it.content.isNotBlank() })
+                                                tech.ziasvannes.safechat.data.models
+                                                        .EncryptionStatus.ENCRYPTED
+                                        else
+                                                tech.ziasvannes.safechat.data.models
+                                                        .EncryptionStatus.NOT_ENCRYPTED
+                        )
                     }
                 }
             } catch (e: Exception) {

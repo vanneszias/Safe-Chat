@@ -27,7 +27,19 @@ object DatabaseModule {
         @Provides
         @Singleton
         fun provideDatabase(@ApplicationContext context: Context): SafeChatDatabase =
-                Room.databaseBuilder(context, SafeChatDatabase::class.java, "safechat.db").build()
+                Room.databaseBuilder(context, SafeChatDatabase::class.java, "safechat.db")
+                        .addMigrations(MIGRATION_2_3)
+                        .build()
+
+        // Room migration for adding decryptedContent to messages
+        val MIGRATION_2_3 =
+                object : androidx.room.migration.Migration(2, 3) {
+                        override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                                database.execSQL(
+                                        "ALTER TABLE messages ADD COLUMN decryptedContent TEXT"
+                                )
+                        }
+                }
 
         /**
          * Provides an instance of ContactDao from the SafeChatDatabase.
