@@ -3,7 +3,7 @@ mod auth;
 mod crypto;
 mod state;
 
-use api::{db_dump, get_messages_with_user, get_user_by_public_key, send_message};
+use api::{db_dump, get_messages_with_user, get_user_by_public_key, send_message, update_message_status};
 use auth::{get_profile, login, register, update_profile, update_public_key};
 use axum::{Router, routing::get};
 use dotenv::dotenv;
@@ -86,6 +86,10 @@ async fn main() {
         .route(
             "/messages/:user_id",
             axum::routing::get(get_messages_with_user),
+        )
+        .route(
+            "/messages/:message_id/status",
+            axum::routing::put(update_message_status),
         )
         .route(
             "/user/:public_key",

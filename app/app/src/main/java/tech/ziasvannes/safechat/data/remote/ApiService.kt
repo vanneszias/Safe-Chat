@@ -53,24 +53,30 @@ data class MessageResponse(
         val iv: String // base64
 )
 
+data class UpdateMessageStatusRequest(
+        val status: String // "SENT", "DELIVERED", "READ", "FAILED"
+)
+
 interface ApiService {
         /**
- * Registers a new user with the provided authentication credentials.
- *
- * Sends a registration request to the server and returns authentication details for the newly created user.
- *
- * @param request The authentication credentials for user registration.
- * @return The authentication response containing user and token information.
- */
+         * Registers a new user with the provided authentication credentials.
+         *
+         * Sends a registration request to the server and returns authentication details for the
+         * newly created user.
+         *
+         * @param request The authentication credentials for user registration.
+         * @return The authentication response containing user and token information.
+         */
         @POST("/auth/register") suspend fun signUp(@Body request: AuthRequest): AuthResponse
 
         /**
- * Authenticates a user and returns authentication details.
- *
- * Sends a POST request to the `/auth/login` endpoint with user credentials and returns an authentication response containing tokens or user information.
- *
- * @return The authentication response with tokens or user data.
- */
+         * Authenticates a user and returns authentication details.
+         *
+         * Sends a POST request to the `/auth/login` endpoint with user credentials and returns an
+         * authentication response containing tokens or user information.
+         *
+         * @return The authentication response with tokens or user data.
+         */
         @POST("/auth/login") suspend fun signIn(@Body request: AuthRequest): AuthResponse
 
         /**
@@ -82,19 +88,20 @@ interface ApiService {
         @GET("/profile") suspend fun getProfile(): ProfileResponse
 
         /**
- * Updates the current user's profile with a new username and/or avatar.
- *
- * Sends a PUT request to update the user's display name and/or avatar image. The avatar should be provided as a base64-encoded string if included.
- *
- * @param request Object containing optional fields for the new username and avatar.
- */
+         * Updates the current user's profile with a new username and/or avatar.
+         *
+         * Sends a PUT request to update the user's display name and/or avatar image. The avatar
+         * should be provided as a base64-encoded string if included.
+         *
+         * @param request Object containing optional fields for the new username and avatar.
+         */
         @PUT("/profile") suspend fun updateProfile(@Body request: UpdateProfileRequest)
 
         /**
- * Updates the user's public key on the server.
- *
- * Sends a PUT request to the `/profile/key` endpoint with the provided public key.
- */
+         * Updates the user's public key on the server.
+         *
+         * Sends a PUT request to the `/profile/key` endpoint with the provided public key.
+         */
         @PUT("/profile/key") suspend fun updatePublicKey(@Body request: UpdateKeyRequest)
 
         /**
@@ -109,7 +116,8 @@ interface ApiService {
         /**
          * Sends a message to another user.
          *
-         * @param request The message details, including content, recipient, type, and encrypted payload.
+         * @param request The message details, including content, recipient, type, and encrypted
+         * payload.
          * @return The details of the sent message as returned by the server.
          */
         @POST("/messages")
@@ -119,12 +127,25 @@ interface ApiService {
          * Retrieves the list of messages exchanged with the specified user.
          *
          * @param userId The unique identifier of the user whose messages are to be fetched.
-         * @return A list of message responses representing the conversation with the specified user.
+         * @return A list of message responses representing the conversation with the specified
+         * user.
          */
         @GET("/messages/{user_id}")
         suspend fun getMessages(
                 @retrofit2.http.Path("user_id") userId: String
         ): List<MessageResponse>
+
+        /**
+         * Updates the status of a specific message.
+         *
+         * @param messageId The unique identifier of the message to update.
+         * @param request The new status for the message.
+         */
+        @PUT("/messages/{message_id}/status")
+        suspend fun updateMessageStatus(
+                @retrofit2.http.Path("message_id") messageId: String,
+                @Body request: UpdateMessageStatusRequest
+        )
 }
 
 // Authenticated requests will have the Authorization header added by an OkHttp interceptor

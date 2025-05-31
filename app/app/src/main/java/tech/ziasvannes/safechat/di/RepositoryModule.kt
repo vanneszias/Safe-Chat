@@ -21,43 +21,45 @@ import tech.ziasvannes.safechat.domain.repository.MessageRepository
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
 
-    @Provides
-    @Singleton
-    fun provideContactRepository(impl: ContactRepositoryImpl): ContactRepository = impl
+        @Provides
+        @Singleton
+        fun provideContactRepository(impl: ContactRepositoryImpl): ContactRepository = impl
 
-    @Provides
-    @Singleton
-    fun provideMessageRepository(
-            db: SafeChatDatabase,
-            encryptionRepository: EncryptionRepository,
-            contactRepository: ContactRepository,
-            userSession: tech.ziasvannes.safechat.session.UserSession,
-            remoteImpl: MessageRepositoryImpl
-    ): MessageRepository =
-            LocalMessageRepositoryImpl(
-                    messageDao = db.messageDao(),
-                    encryptionRepository = encryptionRepository,
-                    contactRepository = contactRepository,
-                    userSession = userSession,
-                    remoteRepository = remoteImpl
-            )
+        @Provides
+        @Singleton
+        fun provideMessageRepository(
+                db: SafeChatDatabase,
+                encryptionRepository: EncryptionRepository,
+                contactRepository: ContactRepository,
+                userSession: tech.ziasvannes.safechat.session.UserSession,
+                remoteImpl: MessageRepositoryImpl
+        ): MessageRepository =
+                LocalMessageRepositoryImpl(
+                        messageDao = db.messageDao(),
+                        encryptionRepository = encryptionRepository,
+                        contactRepository = contactRepository,
+                        userSession = userSession,
+                        remoteRepository = remoteImpl
+                )
 
-    @Provides
-    @Singleton
-    fun provideEncryptionRepository(@ApplicationContext context: Context): EncryptionRepository =
-            EncryptionRepositoryImpl(context)
+        @Provides
+        @Singleton
+        fun provideEncryptionRepository(
+                @ApplicationContext context: Context
+        ): EncryptionRepository = EncryptionRepositoryImpl(context)
 
-    @Provides
-    @Singleton
-    fun provideAuthRepository(
-            apiService: tech.ziasvannes.safechat.data.remote.ApiService,
-            encryptionRepository: EncryptionRepository,
-            userSession: tech.ziasvannes.safechat.session.UserSession
-    ): AuthRepository = AuthRepository(apiService, encryptionRepository, userSession)
+        @Provides
+        @Singleton
+        fun provideAuthRepository(
+                apiService: tech.ziasvannes.safechat.data.remote.ApiService,
+                encryptionRepository: EncryptionRepository,
+                userSession: tech.ziasvannes.safechat.session.UserSession
+        ): AuthRepository = AuthRepository(apiService, encryptionRepository, userSession)
 
-    @Provides
-    @Singleton
-    fun provideRemoteMessageRepository(
-            apiService: tech.ziasvannes.safechat.data.remote.ApiService
-    ): MessageRepositoryImpl = MessageRepositoryImpl(apiService)
+        @Provides
+        @Singleton
+        fun provideRemoteMessageRepository(
+                apiService: tech.ziasvannes.safechat.data.remote.ApiService,
+                userSession: tech.ziasvannes.safechat.session.UserSession
+        ): MessageRepositoryImpl = MessageRepositoryImpl(apiService, userSession)
 }

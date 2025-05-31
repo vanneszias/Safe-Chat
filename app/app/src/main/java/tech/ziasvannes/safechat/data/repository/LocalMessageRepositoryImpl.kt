@@ -30,7 +30,13 @@ constructor(
                 val remoteMessages = remoteRepository.getMessages(chatSessionId).first()
                 val localMessages = messageDao.getMessagesForChat(chatSessionId.toString()).first()
                 val localIds = localMessages.map { it.id }.toSet()
-                val newMessages = remoteMessages.filter { it.id.toString() !in localIds }
+                
+                // Filter out self-sent messages to prevent duplicates
+                val currentUserId = userSession.userId ?: UUID(0, 0)
+                val newMessages = remoteMessages.filter { msg ->
+                    msg.id.toString() !in localIds && msg.senderId != currentUserId
+                }
+                
                 for (msg in newMessages) {
                         // Deduplication: check if message already exists
                         val exists =
@@ -39,46 +45,39 @@ constructor(
                                         .first()
                                         .any { it.id == msg.id.toString() }
                         if (exists) continue
-                        // Try to decrypt and store
-                        val isSelfSent = msg.senderId == (userSession.userId ?: UUID(0, 0))
                         
-                        val decrypted =
-                                if (isSelfSent) {
-                                        // For self-sent messages, don't attempt decryption since they were
-                                        // encrypted for the recipient, not the sender. The plaintext should
-                                        // already be stored locally when the message was sent.
-                                        null  // Will use msg.content as-is
-                                } else {
-                                        // For received messages, decrypt using sender's public key
-                                        val contact = contactRepository.getContactById(msg.senderId)
-                                        val senderPublicKey = contact?.publicKey
-                                        
-                                        try {
-                                                if (senderPublicKey != null) {
-                                                        (encryptionRepository as?
-                                                                        tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
-                                                                ?.decryptIncomingMessage(
-                                                                        senderPublicKeyBase64 = senderPublicKey,
-                                                                        encryptedContent = msg.encryptedContent,
-                                                                        iv = msg.iv
-                                                                )
-                                                } else {
-                                                        android.util.Log.w(
-                                                                "LocalMessageRepository",
-                                                                "Missing public key for message ${msg.id} from sender ${msg.senderId}. " +
-                                                                        "Contact may need to be added manually to decrypt messages."
-                                                        )
-                                                        null
-                                                }
-                                        } catch (e: Exception) {
-                                                android.util.Log.e(
-                                                        "LocalMessageRepository",
-                                                        "Failed to decrypt message ${msg.id} from sender ${msg.senderId}",
-                                                        e
+                        // For received messages, decrypt using sender's public key
+                        val contact = contactRepository.getContactById(msg.senderId)
+                        val senderPublicKey = contact?.publicKey
+
+                        val decrypted = try {
+                                if (senderPublicKey != null) {
+                                        (encryptionRepository as?
+                                                        tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
+                                                ?.decryptIncomingMessage(
+                                                        senderPublicKeyBase64 =
+                                                                senderPublicKey,
+                                                        encryptedContent =
+                                                                msg.encryptedContent,
+                                                        iv = msg.iv
                                                 )
-                                                null
-                                        }
+                                } else {
+                                        android.util.Log.w(
+                                                "LocalMessageRepository",
+                                                "Missing public key for message ${msg.id} from sender ${msg.senderId}. " +
+                                                        "Contact may need to be added manually to decrypt messages."
+                                        )
+                                        null
                                 }
+                        } catch (e: Exception) {
+                                android.util.Log.e(
+                                        "LocalMessageRepository",
+                                        "Failed to decrypt message ${msg.id} from sender ${msg.senderId}",
+                                        e
+                                )
+                                null
+                        }
+                        
                         val entity =
                                 MessageEntity(
                                         id = msg.id.toString(),

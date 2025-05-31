@@ -52,6 +52,11 @@ pub struct SendMessageRequest {
     pub iv: String,
 }
 
+#[derive(serde::Deserialize)]
+pub struct UpdateMessageStatusRequest {
+    pub status: String,
+}
+
 /// Extracts and validates a user ID from a JWT Bearer token in the HTTP Authorization header.
 ///
 /// Returns the user UUID from the token's claims if the token is valid and properly formatted.  
@@ -503,4 +508,152 @@ pub async fn db_dump(State(state): State<Arc<AppState>>) -> impl IntoResponse {
             "messages": messages,
         })),
     )
+}
+
+/// Updates the status of a message and optionally deletes it if marked as READ.
+///
+/// This endpoint allows updating message status and implements automatic cleanup:
+/// - When a message is marked as READ, it gets deleted from the server
+/// - Only the receiver of a message can mark it as read
+/// - Prevents duplicate message issues by removing read messages
+///
+/// # Examples
+///
+/// ```
+/// // Mark message as read (will also delete it)
+/// PUT /messages/{message_id}/status
+/// Authorization: Bearer {token}
+/// Content-Type: application/json
+/// 
+/// {
+///   "status": "READ"
+/// }
+/// ```
+pub async fn update_message_status(
+    Path(message_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(payload): Json<UpdateMessageStatusRequest>,
+) -> impl IntoResponse {
+    // Authenticate user
+    let user_id = match extract_user_id_from_auth(&headers, &state.jwt_secret) {
+        Ok(uid) => uid,
+        Err(e) => return e,
+    };
+
+    // Parse message ID
+    let msg_id = match Uuid::parse_str(&message_id) {
+        Ok(id) => id,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                "Invalid message_id format",
+            );
+        }
+    };
+
+    // Validate status
+    let status = payload.status.trim().to_uppercase();
+    if !["SENT", "DELIVERED", "READ", "FAILED"].contains(&status.as_str()) {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Invalid status. Must be one of: SENT, DELIVERED, READ, FAILED",
+        );
+    }
+
+    // First, verify the message exists and the user is the receiver
+    let message_check = match sqlx::query(
+        "SELECT receiver_id FROM messages WHERE id = $1"
+    )
+    .bind(msg_id)
+    .fetch_optional(&state.db)
+    .await {
+        Ok(row) => row,
+        Err(e) => {
+            info!("Database error checking message: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Database error",
+            );
+        }
+    };
+
+    let receiver_id = match message_check {
+        Some(row) => {
+            match row.try_get::<Uuid, _>("receiver_id") {
+                Ok(id) => id,
+                Err(_) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Invalid receiver_id in database",
+                    );
+                }
+            }
+        }
+        None => {
+            return (
+                StatusCode::NOT_FOUND,
+                "Message not found",
+            );
+        }
+    };
+
+    // Only the receiver can mark a message as read
+    if receiver_id != user_id && status == "READ" {
+        return (
+            StatusCode::FORBIDDEN,
+            "Only the message receiver can mark it as read",
+        );
+    }
+
+    // If status is READ, delete the message instead of updating it
+    if status == "READ" {
+        let delete_result = sqlx::query("DELETE FROM messages WHERE id = $1")
+            .bind(msg_id)
+            .execute(&state.db)
+            .await;
+
+        match delete_result {
+            Ok(result) => {
+                if result.rows_affected() > 0 {
+                    info!("Message {} marked as read and deleted by user {}", msg_id, user_id);
+                    (StatusCode::OK, "Message marked as read and deleted")
+                } else {
+                    (StatusCode::NOT_FOUND, "Message not found")
+                }
+            }
+            Err(e) => {
+                info!("Database error deleting message: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to delete message",
+                )
+            }
+        }
+    } else {
+        // For other statuses, just update the status
+        let update_result = sqlx::query("UPDATE messages SET status = $1 WHERE id = $2")
+            .bind(&status)
+            .bind(msg_id)
+            .execute(&state.db)
+            .await;
+
+        match update_result {
+            Ok(result) => {
+                if result.rows_affected() > 0 {
+                    info!("Message {} status updated to {} by user {}", msg_id, status, user_id);
+                    (StatusCode::OK, "Message status updated")
+                } else {
+                    (StatusCode::NOT_FOUND, "Message not found")
+                }
+            }
+            Err(e) => {
+                info!("Database error updating message status: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to update message status",
+                )
+            }
+        }
+    }
 }

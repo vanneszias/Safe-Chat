@@ -5,7 +5,6 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import tech.ziasvannes.safechat.data.models.ChatSession
 import tech.ziasvannes.safechat.data.models.Message
 import tech.ziasvannes.safechat.data.models.MessageStatus
 import tech.ziasvannes.safechat.data.models.MessageType
@@ -13,28 +12,52 @@ import tech.ziasvannes.safechat.data.remote.ApiService
 import tech.ziasvannes.safechat.data.remote.MessageResponse
 import tech.ziasvannes.safechat.data.remote.SendMessageRequest
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
+import tech.ziasvannes.safechat.session.UserSession
 
-class MessageRepositoryImpl @Inject constructor(private val apiService: ApiService) :
+class MessageRepositoryImpl
+@Inject
+constructor(private val apiService: ApiService, private val userSession: UserSession) :
         MessageRepository {
     /**
-     * Returns a flow that emits the list of messages for a given chat session, fetched from the remote API.
+     * Returns a flow that emits the list of messages for a given chat session, fetched from the
+     * remote API.
      *
-     * The flow emits the current set of messages for the specified chat session ID as retrieved from the remote service.
+     * The flow emits the current set of messages for the specified chat session ID as retrieved
+     * from the remote service. Additionally, any received messages (where current user is the
+     * receiver) are automatically marked as READ, which causes the server to delete them to prevent
+     * duplicates.
      *
      * @param chatSessionId Unique identifier of the chat session whose messages are to be fetched.
      * @return A flow emitting the list of messages for the specified chat session.
      */
     override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> = flow {
         val messages = apiService.getMessages(chatSessionId.toString())
-        emit(messages.map { it.toMessage() })
+        val messageList = messages.map { it.toMessage() }
+
+        // Mark received messages as read to prevent duplicates
+        val currentUserId = userSession.userId
+        if (currentUserId != null) {
+            messageList
+                    .filter { message ->
+                        message.receiverId == currentUserId && message.status != MessageStatus.READ
+                    }
+                    .forEach { message ->
+                        // Mark as read - this will cause the server to delete the message
+                        runCatching { updateMessageStatus(message.id, MessageStatus.READ) }
+                    }
+        }
+
+        emit(messageList)
     }
 
     /**
      * Sends a message via the remote API and returns the result.
      *
-     * Converts the provided [Message] to a request, sends it using the API, and maps the response back to a [Message]. Any errors encountered are captured and returned as a [Result] failure.
+     * Converts the provided [Message] to a request, sends it using the API, and maps the response
+     * back to a [Message]. Any errors encountered are captured and returned as a [Result] failure.
      *
-     * @return A [Result] containing the sent message on success, or an error if the operation fails.
+     * @return A [Result] containing the sent message on success, or an error if the operation
+     * fails.
      */
     override suspend fun sendMessage(message: Message): Result<Message> = runCatching {
         val req = message.toSendMessageRequest()
@@ -43,45 +66,55 @@ class MessageRepositoryImpl @Inject constructor(private val apiService: ApiServi
     }
 
     /**
-     * Placeholder for updating the status of a message by its UUID.
+     * Updates the status of a message via the remote API.
      *
-     * This method is not implemented in remote mode and performs no operation.
+     * Sends a request to update the message status on the server. When marking a message as READ,
+     * the server will automatically delete it to prevent duplicates.
      */
     override suspend fun updateMessageStatus(messageId: UUID, status: MessageStatus) {
-        // Not implemented in remote mode
+        runCatching {
+            val request =
+                    tech.ziasvannes.safechat.data.remote.UpdateMessageStatusRequest(
+                            status = status.name
+                    )
+            apiService.updateMessageStatus(messageId.toString(), request)
+        }
     }
 
     /**
-     * Deletes a message by its unique identifier.
+     * Deletes a message via the remote API.
      *
-     * Not implemented in remote mode; this method currently has no effect.
+     * This implementation is a no-op since the remote API doesn't support direct message deletion.
+     * Messages are deleted automatically when marked as read via updateMessageStatus.
      */
     override suspend fun deleteMessage(messageId: UUID) {
-        // Not implemented in remote mode
+        // Remote API doesn't support direct message deletion
+        // Messages are deleted automatically when marked as read
     }
 
     /**
-     * Returns a flow emitting an empty list of chat sessions.
+     * Retrieves chat sessions from the remote API.
      *
-     * This method is a placeholder and does not retrieve chat sessions, as backend support is not implemented.
-     *
-     * @return A flow emitting an empty list.
+     * This is a simplified implementation that returns an empty flow since the remote API doesn't
+     * provide a dedicated chat sessions endpoint.
      */
-    override suspend fun getChatSessions(): Flow<List<ChatSession>> = flow {
-        // Not implemented: would require a backend endpoint for chat sessions
+    override suspend fun getChatSessions():
+            Flow<List<tech.ziasvannes.safechat.data.models.ChatSession>> = flow {
+        // Remote API doesn't provide chat sessions endpoint
+        // This is handled by the local repository layer
         emit(emptyList())
     }
 }
 
 /**
-         * Converts a [MessageResponse] from the remote API into a [Message] domain model.
-         *
-         * Decodes Base64-encoded encrypted content and IV, parses UUIDs, and maps status and type fields to their corresponding enums.
-         * Unknown or unsupported message types default to [MessageType.Text].
-         *
-         * @return The converted [Message] object.
-         */
-        private fun MessageResponse.toMessage(): Message =
+ * Converts a [MessageResponse] from the remote API into a [Message] domain model.
+ *
+ * Decodes Base64-encoded encrypted content and IV, parses UUIDs, and maps status and type fields to
+ * their corresponding enums. Unknown or unsupported message types default to [MessageType.Text].
+ *
+ * @return The converted [Message] object.
+ */
+private fun MessageResponse.toMessage(): Message =
         Message(
                 id = UUID.fromString(id),
                 content = content,
@@ -99,15 +132,17 @@ class MessageRepositoryImpl @Inject constructor(private val apiService: ApiServi
         )
 
 /**
-         * Converts a [Message] object to a [SendMessageRequest] for sending via the API.
-         *
-         * Encodes the encrypted content and initialization vector (IV) as Base64 strings and maps the message type to its string representation.
-         *
-         * @return A [SendMessageRequest] representing the message in the format expected by the remote API.
-         */
-        private fun Message.toSendMessageRequest(): SendMessageRequest =
+ * Converts a [Message] object to a [SendMessageRequest] for sending via the API.
+ *
+ * Encodes the encrypted content and initialization vector (IV) as Base64 strings and maps the
+ * message type to its string representation. For security, only encrypted content is sent to the
+ * server.
+ *
+ * @return A [SendMessageRequest] representing the message in the format expected by the remote API.
+ */
+private fun Message.toSendMessageRequest(): SendMessageRequest =
         SendMessageRequest(
-                content = content,
+                content = "", // Don't send plaintext content to server for security
                 receiver_id = receiverId.toString(),
                 type =
                         when (type) {
