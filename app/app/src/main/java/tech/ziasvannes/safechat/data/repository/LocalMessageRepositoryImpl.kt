@@ -41,41 +41,43 @@ constructor(
                         if (exists) continue
                         // Try to decrypt and store
                         val isSelfSent = msg.senderId == (userSession.userId ?: UUID(0, 0))
-                        val publicKeyBase64 =
-                                if (isSelfSent) {
-                                        userSession.userPublicKey
-                                                ?: (encryptionRepository as?
-                                                                tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
-                                                        ?.getCurrentPublicKey()
-                                } else {
-                                        contactRepository.getContactById(msg.senderId)?.publicKey
-                                }
+                        
                         val decrypted =
-                                try {
-                                        if (publicKeyBase64 != null) {
-                                                (encryptionRepository as?
-                                                                tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
-                                                        ?.decryptIncomingMessage(
-                                                                senderPublicKeyBase64 =
-                                                                        publicKeyBase64,
-                                                                encryptedContent =
-                                                                        msg.encryptedContent,
-                                                                iv = msg.iv
+                                if (isSelfSent) {
+                                        // For self-sent messages, don't attempt decryption since they were
+                                        // encrypted for the recipient, not the sender. The plaintext should
+                                        // already be stored locally when the message was sent.
+                                        null  // Will use msg.content as-is
+                                } else {
+                                        // For received messages, decrypt using sender's public key
+                                        val contact = contactRepository.getContactById(msg.senderId)
+                                        val senderPublicKey = contact?.publicKey
+                                        
+                                        try {
+                                                if (senderPublicKey != null) {
+                                                        (encryptionRepository as?
+                                                                        tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
+                                                                ?.decryptIncomingMessage(
+                                                                        senderPublicKeyBase64 = senderPublicKey,
+                                                                        encryptedContent = msg.encryptedContent,
+                                                                        iv = msg.iv
+                                                                )
+                                                } else {
+                                                        android.util.Log.w(
+                                                                "LocalMessageRepository",
+                                                                "Missing public key for message ${msg.id} from sender ${msg.senderId}. " +
+                                                                        "Contact may need to be added manually to decrypt messages."
                                                         )
-                                        } else {
-                                                android.util.Log.w(
+                                                        null
+                                                }
+                                        } catch (e: Exception) {
+                                                android.util.Log.e(
                                                         "LocalMessageRepository",
-                                                        "Missing public key for message ${msg.id}"
+                                                        "Failed to decrypt message ${msg.id} from sender ${msg.senderId}",
+                                                        e
                                                 )
                                                 null
                                         }
-                                } catch (e: Exception) {
-                                        android.util.Log.e(
-                                                "LocalMessageRepository",
-                                                "Failed to decrypt message ${msg.id}",
-                                                e
-                                        )
-                                        null
                                 }
                         val entity =
                                 MessageEntity(
@@ -100,41 +102,11 @@ constructor(
         }
 
         override suspend fun sendMessage(message: Message): Result<Message> {
-                // Save locally first with decrypted content
-                val decryptedContent =
-                        try {
-                                String(
-                                        (encryptionRepository as?
-                                                        tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
-                                                ?.decryptMessage(
-                                                        message.encryptedContent,
-                                                        message.iv,
-                                                        (encryptionRepository as?
-                                                                        tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
-                                                                ?.computeSharedSecret(
-                                                                        (encryptionRepository as?
-                                                                                        tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
-                                                                                ?.publicKeyFromBase64(
-                                                                                        userSession
-                                                                                                .userPublicKey
-                                                                                                ?: ""
-                                                                                )
-                                                                                ?: throw IllegalStateException(
-                                                                                        "No public key"
-                                                                                )
-                                                                )
-                                                                ?: ByteArray(0)
-                                                )
-                                                ?.toByteArray()
-                                                ?: ByteArray(0)
-                                )
-                        } catch (e: Exception) {
-                                null
-                        }
+                // Save locally with original plaintext for the sender's copy
                 messageDao.insertMessage(
                         MessageEntity(
                                 id = message.id.toString(),
-                                content = message.content,
+                                content = message.content, // This is now the original plaintext
                                 timestamp = message.timestamp,
                                 senderId = message.senderId.toString(),
                                 receiverId = message.receiverId.toString(),
@@ -142,7 +114,8 @@ constructor(
                                 type = message.type,
                                 encryptedContent = message.encryptedContent,
                                 iv = message.iv,
-                                decryptedContent = decryptedContent
+                                decryptedContent =
+                                        message.content // Use original plaintext for local storage
                         )
                 )
                 // Then send remotely

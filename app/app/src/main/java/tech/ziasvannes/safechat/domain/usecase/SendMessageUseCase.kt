@@ -75,11 +75,11 @@ constructor(
                 val (encryptedContent, iv) =
                         encryptionRepository.encryptMessage(content, sharedSecret)
 
-                // Create and send message (content is empty, only encryptedContent/iv are used)
+                // Create and send message (preserve plaintext content for local storage)
                 val message =
                         Message(
                                 id = UUID.randomUUID(),
-                                content = "", // Do not send plaintext
+                                content = content, // Pass the original plaintext content
                                 timestamp = System.currentTimeMillis(),
                                 senderId = userSession.userId
                                                 ?: throw IllegalStateException(
