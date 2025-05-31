@@ -34,7 +34,8 @@ class Converters {
      * @param value The MessageType instance to serialize.
      * @return A JSON string representing the MessageType.
      */
-    @TypeConverter fun fromMessageType(value: MessageType): String = gson.toJson(value)
+    @TypeConverter
+    fun fromMessageType(value: MessageType): String = "Text"
 
     /**
      * Deserializes a JSON string into a MessageType object.
@@ -43,7 +44,7 @@ class Converters {
      * @return The corresponding MessageType object.
      */
     @TypeConverter
-    fun toMessageType(value: String): MessageType = gson.fromJson(value, MessageType::class.java)
+    fun toMessageType(value: String): MessageType = MessageType.Text
 
     /**
      * Converts a [ContactStatus] enum to its string name for database storage.
