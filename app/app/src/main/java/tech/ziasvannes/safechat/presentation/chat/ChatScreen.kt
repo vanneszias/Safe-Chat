@@ -1,20 +1,27 @@
 package tech.ziasvannes.safechat.presentation.chat
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import java.util.UUID
+import kotlinx.coroutines.launch
 import tech.ziasvannes.safechat.presentation.components.EncryptionStatusIndicator
 import tech.ziasvannes.safechat.presentation.components.MessageBubble
 
@@ -36,9 +43,11 @@ import tech.ziasvannes.safechat.presentation.components.MessageBubble
 /**
  * Composes the main chat screen UI for a given chat session.
  *
- * Displays the message history, input field for composing messages, navigation controls, and encryption status. Handles loading and error overlays as needed.
+ * Displays the message history, input field for composing messages, navigation controls, and
+ * encryption status. Handles loading and error overlays as needed.
  *
- * @param chatSessionId The unique identifier of the chat session to display, or null to use the current context.
+ * @param chatSessionId The unique identifier of the chat session to display, or null to use the
+ * current context.
  * @param onNavigateBack Callback invoked when the user presses the back navigation icon.
  */
 @Composable
@@ -49,22 +58,49 @@ fun ChatScreen(
         viewModel: ChatViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
 
     // If chatSessionId is provided, load messages and contact for that chat session
-    LaunchedEffect(chatSessionId) { 
-        chatSessionId?.let { 
-            viewModel.loadChat(it)
+    LaunchedEffect(chatSessionId) { chatSessionId?.let { viewModel.loadChat(it) } }
+
+    // Initial scroll to bottom when chat is first loaded
+    LaunchedEffect(state.messages.isNotEmpty(), state.isLoading) {
+        if (state.messages.isNotEmpty() && !state.isLoading) {
+            coroutineScope.launch { listState.scrollToItem(state.messages.size - 1) }
         }
     }
-    
+
+    // Auto-scroll to the latest message when new messages arrive, but only if user is near bottom
+    LaunchedEffect(state.messages.size) {
+        if (state.messages.isNotEmpty()) {
+            coroutineScope.launch {
+                val lastVisibleIndex =
+                        listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                val totalItems = state.messages.size
+                val isNearBottom =
+                        totalItems - lastVisibleIndex <= 3 // User is within 3 messages of bottom
+
+                if (isNearBottom || lastVisibleIndex == 0
+                ) { // Always scroll on first message or when near bottom
+                    listState.animateScrollToItem(
+                            totalItems - 1
+                    ) // Scroll to the last item (latest message)
+                }
+            }
+        }
+    }
+
     // Mark messages as read when chat is loaded and user can see messages
     LaunchedEffect(chatSessionId, state.messages.size) {
         if (chatSessionId != null && state.messages.isNotEmpty() && !state.isLoading) {
             // Only mark as read if there are unread received messages
-            val hasUnreadMessages = state.messages.any { message ->
-                message.receiverId == state.currentUserId && 
-                message.status != tech.ziasvannes.safechat.data.models.MessageStatus.READ
-            }
+            val hasUnreadMessages =
+                    state.messages.any { message ->
+                        message.receiverId == state.currentUserId &&
+                                message.status !=
+                                        tech.ziasvannes.safechat.data.models.MessageStatus.READ
+                    }
             if (hasUnreadMessages) {
                 viewModel.onEvent(ChatEvent.MarkMessagesAsRead)
             }
@@ -78,7 +114,7 @@ fun ChatScreen(
                         navigationIcon = {
                             IconButton(onClick = onNavigateBack) {
                                 Icon(
-                                        imageVector = Icons.Default.ArrowBack,
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = "Navigate back"
                                 )
                             }
@@ -98,64 +134,85 @@ fun ChatScreen(
             },
             modifier = modifier.fillMaxSize()
     ) { paddingValues ->
-        Column(
-                modifier = Modifier.fillMaxSize().padding(paddingValues),
-                verticalArrangement = Arrangement.SpaceBetween
+        Box(
+                modifier =
+                        Modifier.fillMaxSize()
+                                .background(
+                                        Brush.verticalGradient(
+                                                colors =
+                                                        listOf(
+                                                                MaterialTheme.colorScheme
+                                                                        .background,
+                                                                MaterialTheme.colorScheme.surface
+                                                                        .copy(alpha = 0.3f)
+                                                        )
+                                        )
+                                )
         ) {
-            // Show retry encryption button if there are decryption errors
-            if (state.hasDecryptionErrors) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+            Column(
+                    modifier = Modifier.fillMaxSize().padding(paddingValues),
+                    verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Show retry encryption button if there are decryption errors
+                if (state.hasDecryptionErrors) {
+                    Card(
+                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            colors =
+                                    CardDefaults.cardColors(
+                                            containerColor =
+                                                    MaterialTheme.colorScheme.errorContainer
+                                    )
                     ) {
-                        Text(
-                            text = "Some messages couldn't be decrypted",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = { viewModel.onEvent(ChatEvent.RetryEncryption) },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError
-                            )
+                        Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("Retry Encryption")
+                            Text(
+                                    text = "Some messages couldn't be decrypted",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                    onClick = { viewModel.onEvent(ChatEvent.RetryEncryption) },
+                                    colors =
+                                            ButtonDefaults.buttonColors(
+                                                    containerColor =
+                                                            MaterialTheme.colorScheme.error,
+                                                    contentColor = MaterialTheme.colorScheme.onError
+                                            )
+                            ) { Text("Retry Encryption") }
                         }
                     }
                 }
-            }
-            
-            // Messages List
-            LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    reverseLayout = false,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-            ) {
-                items(items = state.messages, key = { message -> message.id }) { message ->
-                    // Use our new MessageBubble component instead of the basic MessageItem
-                    MessageBubble(
-                            message = message,
-                            isFromCurrentUser = message.senderId == state.currentUserId
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
 
-            // Message Input
-            MessageInput(
-                    text = state.messageText,
-                    onTextChange = { viewModel.onEvent(ChatEvent.UpdateMessageText(it)) },
-                    onSendClick = { viewModel.onEvent(ChatEvent.SendMessage(state.messageText)) },
-                    modifier = Modifier.fillMaxWidth().padding(16.dp)
-            )
+                // Messages List
+                LazyColumn(
+                        state = listState,
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        reverseLayout = false,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(items = state.messages, key = { message -> message.id }) { message ->
+                        // Use our new MessageBubble component instead of the basic MessageItem
+                        MessageBubble(
+                                message = message,
+                                isFromCurrentUser = message.senderId == state.currentUserId
+                        )
+                    }
+                }
+
+                // Message Input
+                MessageInput(
+                        text = state.messageText,
+                        onTextChange = { viewModel.onEvent(ChatEvent.UpdateMessageText(it)) },
+                        onSendClick = {
+                            viewModel.onEvent(ChatEvent.SendMessage(state.messageText))
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(16.dp)
+                )
+            }
         }
     }
 
@@ -187,20 +244,35 @@ fun ChatScreen(
  * @param onSendClick Callback invoked when the send button is clicked.
  */
 @Composable
-private fun MessageInput(
+fun MessageInput(
         text: String,
         onTextChange: (String) -> Unit,
         onSendClick: () -> Unit,
         modifier: Modifier = Modifier
 ) {
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        TextField(
+    val buttonColor =
+            if (text.isNotBlank()) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            }
+
+    Row(modifier = modifier, verticalAlignment = Alignment.Bottom) {
+        OutlinedTextField(
                 value = text,
                 onValueChange = onTextChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Type a message...") }
+                placeholder = { Text("Type a message...") },
+                maxLines = 3,
+                shape = RoundedCornerShape(24.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Button(onClick = onSendClick, enabled = text.isNotBlank()) { Text("Send") }
+        FloatingActionButton(
+                onClick = onSendClick,
+                modifier = Modifier.size(48.dp),
+                containerColor = buttonColor
+        ) {
+            Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = "Send message")
+        }
     }
 }

@@ -10,6 +10,7 @@ services:
       - db
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@db/safechat
+      TZ: Europe/Brussels
   db:
     image: postgres:16
     restart: always
@@ -17,6 +18,7 @@ services:
       POSTGRES_DB: safechat
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Europe/Brussels
     ports:
       - "5432:5432"
     volumes:

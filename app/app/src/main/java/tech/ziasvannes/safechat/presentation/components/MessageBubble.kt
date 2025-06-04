@@ -3,6 +3,8 @@ package tech.ziasvannes.safechat.presentation.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,12 +56,7 @@ fun MessageBubble(message: Message, isFromCurrentUser: Boolean, modifier: Modifi
                 MaterialTheme.colorScheme.onSurface
             }
 
-    val alignment =
-            if (isFromCurrentUser) {
-                Alignment.CenterEnd
-            } else {
-                Alignment.CenterStart
-            }
+
 
     val bubbleShape =
             if (isFromCurrentUser) {
@@ -72,63 +69,72 @@ fun MessageBubble(message: Message, isFromCurrentUser: Boolean, modifier: Modifi
             modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             horizontalAlignment = if (isFromCurrentUser) Alignment.End else Alignment.Start
     ) {
-        Box(
-                modifier =
-                        Modifier.widthIn(max = 280.dp)
-                                .clip(bubbleShape)
-                                .background(backgroundColor)
-                                .padding(12.dp)
+        Card(
+                modifier = Modifier.widthIn(min = 48.dp, max = 280.dp),
+                shape = bubbleShape,
+                colors = CardDefaults.cardColors(containerColor = backgroundColor),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
+            Box(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
             when (message.type) {
                 is MessageType.Text -> {
                     Text(
-                            text = message.content ?: "", // Display content or empty string if null
+                            text = message.content ?: "", 
                             color = textColor,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
                     )
                 }
                 is MessageType.Image -> {
-                    // Image display logic will be implemented here
                     Text(
-                            text = "Image message (not yet implemented)",
+                            text = "📷 Image message (not yet implemented)",
                             color = textColor,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
                     )
                 }
                 is MessageType.File -> {
-                    // File message display logic will be implemented here
-                    val fileInfo = message.type as MessageType.File
-                    Text(
-                            text = "File: ${fileInfo.name} (${formatFileSize(fileInfo.size)})",
-                            color = textColor,
-                            style = MaterialTheme.typography.bodyMedium
-                    )
+                    val fileInfo = message.type
+                    Column {
+                        Text(
+                                text = "📎 ${fileInfo.name}",
+                                color = textColor,
+                                style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                                text = formatFileSize(fileInfo.size),
+                                color = textColor.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
+            }
             }
         }
 
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
-        // Time and status indicators
         Row(
-                modifier = Modifier.padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement =
+                        if (isFromCurrentUser) Arrangement.End else Arrangement.Start
         ) {
-            Text(
-                    text = formatMessageTime(message.timestamp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-
-            Spacer(modifier = Modifier.width(4.dp))
-
             if (isFromCurrentUser) {
                 Text(
                         text = getStatusIndicator(message.status),
                         style = MaterialTheme.typography.labelSmall,
                         color = getStatusColor(message.status)
                 )
+                Spacer(modifier = Modifier.width(4.dp))
             }
+
+            Text(
+                    text = formatMessageTime(message.timestamp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
         }
     }
 }
@@ -167,7 +173,7 @@ private fun formatFileSize(size: Long): String {
  * @param status The status of the message.
  * @return A string representing the message's delivery state (e.g., "Sent", "Delivered").
  */
-private fun getStatusIndicator(status: MessageStatus): String {
+fun getStatusIndicator(status: MessageStatus): String {
     return when (status) {
         MessageStatus.SENDING -> "Sending..."
         MessageStatus.SENT -> "Sent"

@@ -11,6 +11,7 @@ use axum::{
 };
 use base64::{Engine as _, engine::general_purpose};
 use chrono::{DateTime, Utc};
+use chrono_tz::Europe::Brussels;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::Deserialize;
 use serde::Serialize;
@@ -367,14 +368,15 @@ pub async fn get_profile(
             let id: Uuid = record.try_get("id").unwrap();
             let username: String = record.try_get("username").unwrap();
             let public_key: String = record.try_get("public_key").unwrap();
-            let created_at: DateTime<Utc> = record.try_get("created_at").unwrap_or(Utc::now());
+            let created_at_utc: DateTime<Utc> = record.try_get("created_at").unwrap();
+            let created_at_brussels = created_at_utc.with_timezone(&Brussels);
             let avatar_bytes: Option<Vec<u8>> = record.try_get("avatar").ok();
             let avatar = avatar_bytes.map(|bytes| general_purpose::STANDARD.encode(bytes));
             let profile = UserProfile {
                 id: id.to_string(),
                 username,
                 public_key,
-                created_at: created_at.to_rfc3339(),
+                created_at: created_at_brussels.to_rfc3339(),
                 avatar,
             };
             (StatusCode::OK, Json(json!(profile))).into_response()
@@ -470,13 +472,20 @@ pub async fn update_public_key(
             return (StatusCode::BAD_REQUEST, "Invalid JSON").into_response();
         }
     };
-    
+
     // Validate public key format (must be X.509-encoded X25519 key)
     if !validate_x509_public_key(&payload.public_key) {
-        info!("Update key failed: invalid X.509 public key format for user '{}'", user_id);
-        return (StatusCode::BAD_REQUEST, "Invalid public key format. Must be X.509-encoded X25519 key").into_response();
+        info!(
+            "Update key failed: invalid X.509 public key format for user '{}'",
+            user_id
+        );
+        return (
+            StatusCode::BAD_REQUEST,
+            "Invalid public key format. Must be X.509-encoded X25519 key",
+        )
+            .into_response();
     }
-    
+
     // Update public key in DB
     let res = sqlx::query("UPDATE users SET public_key = $1 WHERE id = $2")
         .bind(&payload.public_key)

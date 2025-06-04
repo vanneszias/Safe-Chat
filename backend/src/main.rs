@@ -3,7 +3,10 @@ mod auth;
 mod crypto;
 mod state;
 
-use api::{db_dump, get_messages_with_user, get_user_by_public_key, get_user_by_id, send_message, update_message_status};
+use api::{
+    db_dump, get_messages_with_user, get_user_by_id, get_user_by_public_key, send_message,
+    update_message_status,
+};
 use auth::{get_profile, login, register, update_profile, update_public_key};
 use axum::{Router, routing::get};
 use dotenv::dotenv;
@@ -95,10 +98,7 @@ async fn main() {
             "/user/:public_key",
             axum::routing::get(get_user_by_public_key),
         )
-        .route(
-            "/user/by-id/:user_id",
-            axum::routing::get(get_user_by_id),
-        )
+        .route("/user/by-id/:user_id", axum::routing::get(get_user_by_id))
         .route("/admin/dbdump", get(db_dump))
         .nest_service("/admin/dbtable.html", ServeFile::new("src/dbtable.html"))
         .nest_service("/", ServeFile::new("src/dbtable.html"))

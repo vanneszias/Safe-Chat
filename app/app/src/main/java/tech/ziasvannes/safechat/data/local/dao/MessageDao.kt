@@ -23,7 +23,7 @@ interface MessageDao {
      * @return A Flow emitting lists of messages for the given chat ID.
      */
     @Query(
-            "SELECT * FROM messages WHERE senderId = :chatId OR receiverId = :chatId ORDER BY timestamp DESC"
+            "SELECT * FROM messages WHERE senderId = :chatId OR receiverId = :chatId ORDER BY timestamp ASC"
     )
     fun getMessagesForChat(chatId: String): Flow<List<MessageEntity>>
 

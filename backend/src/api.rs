@@ -1,3 +1,12 @@
+//! API module for Safe Chat backend
+//! 
+//! This module handles all API endpoints and implements proper timezone handling
+//! for the Europe/Brussels timezone. All timestamps are:
+//! - Stored as Unix timestamps (BIGINT) in the database
+//! - Generated in Brussels timezone when creating new messages
+//! - Converted to Brussels timezone when returning data to clients
+//! - The created_at fields remain static as stored in the database
+
 use crate::state::AppState;
 use axum::extract::{Json, Path, State};
 use axum::http::HeaderMap;
@@ -7,6 +16,8 @@ use axum::response::IntoResponse;
 use base64;
 use base64::Engine;
 use base64::engine::general_purpose;
+use chrono::{DateTime, Utc};
+use chrono_tz::Europe::Brussels;
 use jsonwebtoken::{DecodingKey, Validation, decode};
 use serde::Serialize;
 use serde_json::json;
@@ -14,6 +25,7 @@ use sqlx::Row;
 use sqlx::types::Uuid;
 use std::sync::Arc;
 use tracing::info;
+
 
 #[derive(Serialize)]
 pub struct UserResponse {
@@ -33,7 +45,7 @@ struct Claims {
 #[derive(serde::Serialize)]
 pub struct MessageResponse {
     pub id: String,
-    pub timestamp: i64,
+    pub timestamp: String,
     pub sender_id: String,
     pub receiver_id: String,
     pub status: String,
@@ -57,7 +69,7 @@ pub struct UpdateMessageStatusRequest {
 
 /// Extracts and validates a user ID from a JWT Bearer token in the HTTP Authorization header.
 ///
-/// Returns the user UUID from the token's claims if the token is valid and properly formatted.  
+/// Returns the user UUID from the token's claims if the token is valid and properly formatted.
 /// Returns an error with `UNAUTHORIZED` status if the header is missing, malformed, or the token is invalid.
 ///
 /// # Examples
@@ -170,14 +182,16 @@ pub async fn get_user_by_public_key(
                 .into_response();
         }
     };
+
+    // Get created_at from database and convert to Brussels timezone
+    let created_at_utc: DateTime<Utc> = row.try_get::<DateTime<Utc>, _>("created_at").unwrap();
+    let created_at_brussels = created_at_utc.with_timezone(&Brussels);
+
     let user = UserResponse {
         id: row.try_get::<Uuid, _>("id").unwrap().to_string(),
         username: row.try_get::<String, _>("username").unwrap(),
         public_key: row.try_get::<String, _>("public_key").unwrap(),
-        created_at: row
-            .try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-            .unwrap()
-            .to_rfc3339(),
+        created_at: created_at_brussels.to_rfc3339(),
         avatar: row
             .try_get::<Option<Vec<u8>>, _>("avatar")
             .ok()
@@ -220,7 +234,7 @@ pub async fn get_user_by_id(
             return e.into_response();
         }
     };
-    
+
     // Parse the user ID
     let target_user_id = match Uuid::parse_str(&user_id) {
         Ok(uid) => uid,
@@ -232,12 +246,12 @@ pub async fn get_user_by_id(
                 .into_response();
         }
     };
-    
+
     info!(
         "User {} requested user lookup by ID: {}",
         requesting_user, target_user_id
     );
-    
+
     let row = match sqlx::query(
         "SELECT id, username, public_key, created_at, avatar FROM users WHERE id = $1",
     )
@@ -259,22 +273,23 @@ pub async fn get_user_by_id(
                 .into_response();
         }
     };
-    
+
+    // Get created_at from database and convert to Brussels timezone
+    let created_at_utc: DateTime<Utc> = row.try_get::<DateTime<Utc>, _>("created_at").unwrap();
+    let created_at_brussels = created_at_utc.with_timezone(&Brussels);
+
     let user = UserResponse {
         id: row.try_get::<Uuid, _>("id").unwrap().to_string(),
         username: row.try_get::<String, _>("username").unwrap(),
         public_key: row.try_get::<String, _>("public_key").unwrap(),
-        created_at: row
-            .try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
-            .unwrap()
-            .to_rfc3339(),
+        created_at: created_at_brussels.to_rfc3339(),
         avatar: row
             .try_get::<Option<Vec<u8>>, _>("avatar")
             .ok()
             .flatten()
             .map(base64::encode),
     };
-    
+
     info!(
         "User found for ID: {} (username: {})",
         target_user_id, user.username
@@ -299,6 +314,10 @@ pub async fn send_message(
     headers: HeaderMap,
     Json(payload): Json<SendMessageRequest>,
 ) -> impl IntoResponse {
+    // get current time in Brussels timezone and convert to Unix timestamp
+    let now = Utc::now().with_timezone(&Brussels);
+    let timestamp_millis = now.timestamp_millis();
+
     // Extract token from Authorization header
     let token = match headers
         .get(AUTHORIZATION)
@@ -329,7 +348,7 @@ pub async fn send_message(
         }
     };
     let id = sqlx::types::Uuid::new_v4();
-    let timestamp = chrono::Utc::now().timestamp();
+
     let status = "SENT";
     // Decode base64 fields
     let encrypted_content = match base64::decode(&payload.encrypted_content) {
@@ -348,12 +367,13 @@ pub async fn send_message(
             return (StatusCode::BAD_REQUEST, "Invalid base64 for iv").into_response();
         }
     };
+
     // Insert into DB
     let res = sqlx::query(
         "INSERT INTO messages (id, timestamp, sender_id, receiver_id, status, type, encrypted_content, iv) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
     )
     .bind(id)
-    .bind(timestamp)
+    .bind(timestamp_millis)
     .bind(sender_id)
     .bind(receiver_id)
     .bind(status)
@@ -371,7 +391,7 @@ pub async fn send_message(
     }
     let response = MessageResponse {
         id: id.to_string(),
-        timestamp,
+        timestamp: timestamp_millis.to_string(),
         sender_id: sender_id.to_string(),
         receiver_id: receiver_id.to_string(),
         status: status.to_string(),
@@ -467,7 +487,7 @@ pub async fn get_messages_with_user(
         .into_iter()
         .map(|row| MessageResponse {
             id: row.try_get::<Uuid, _>("id").unwrap().to_string(),
-            timestamp: row.try_get::<i64, _>("timestamp").unwrap_or_default(),
+            timestamp: row.try_get::<i64, _>("timestamp").unwrap().to_string(),
             sender_id: row.try_get::<Uuid, _>("sender_id").unwrap().to_string(),
             receiver_id: row.try_get::<Uuid, _>("receiver_id").unwrap().to_string(),
             status: row.try_get::<String, _>("status").unwrap_or_default(),
@@ -516,14 +536,14 @@ pub async fn db_dump(State(state): State<Arc<AppState>>) -> impl IntoResponse {
                     let id: sqlx::types::Uuid = row.try_get("id").unwrap();
                     let username: String = row.try_get("username").unwrap();
                     let public_key: String = row.try_get("public_key").unwrap();
-                    let created_at: chrono::DateTime<chrono::Utc> =
-                        row.try_get("created_at").unwrap();
+                    let created_at_utc: DateTime<Utc> = row.try_get("created_at").unwrap();
+                    let created_at_brussels = created_at_utc.with_timezone(&Brussels);
                     let avatar: Option<Vec<u8>> = row.try_get("avatar").ok().flatten();
                     json!({
                         "id": id,
                         "username": username,
                         "public_key": public_key,
-                        "created_at": created_at,
+                        "created_at": created_at_brussels.to_rfc3339(),
                         "avatar": avatar.map(|a| general_purpose::STANDARD.encode(a)),
                     })
                 })
@@ -543,8 +563,7 @@ pub async fn db_dump(State(state): State<Arc<AppState>>) -> impl IntoResponse {
                 let id: sqlx::types::Uuid = row.try_get("id").unwrap();
                 let name: String = row.try_get("name").unwrap();
                 let public_key: String = row.try_get("public_key").unwrap();
-                let last_seen: Option<chrono::DateTime<chrono::Utc>> =
-                    row.try_get("last_seen").ok().flatten();
+                let last_seen: String = row.try_get("last_seen").unwrap();
                 let status: Option<String> = row.try_get("status").ok().flatten();
                 let avatar_url: Option<String> = row.try_get("avatar_url").ok().flatten();
                 json!({
@@ -565,7 +584,10 @@ pub async fn db_dump(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         .await {
             Ok(rows) => rows.into_iter().map(|row| {
                 let id: sqlx::types::Uuid = row.try_get("id").unwrap();
-                let timestamp: Option<i64> = row.try_get("timestamp").ok().flatten();
+                let timestamp_millis: i64 = row.try_get("timestamp").unwrap_or(0);
+                // Convert Unix timestamp to Brussels timezone for display
+                let timestamp_utc = DateTime::from_timestamp_millis(timestamp_millis).unwrap_or_else(|| Utc::now());
+                let timestamp_brussels = timestamp_utc.with_timezone(&Brussels);
                 let sender_id: sqlx::types::Uuid = row.try_get("sender_id").unwrap();
                 let receiver_id: sqlx::types::Uuid = row.try_get("receiver_id").unwrap();
                 let status: Option<String> = row.try_get("status").ok().flatten();
@@ -574,7 +596,7 @@ pub async fn db_dump(State(state): State<Arc<AppState>>) -> impl IntoResponse {
                 let iv: Option<Vec<u8>> = row.try_get("iv").ok().flatten();
                 json!({
                     "id": id,
-                    "timestamp": timestamp,
+                    "timestamp": timestamp_brussels.to_rfc3339(),
                     "sender_id": sender_id,
                     "receiver_id": receiver_id,
                     "status": status,
@@ -609,7 +631,7 @@ pub async fn db_dump(State(state): State<Arc<AppState>>) -> impl IntoResponse {
 /// PUT /messages/{message_id}/status
 /// Authorization: Bearer {token}
 /// Content-Type: application/json
-/// 
+///
 /// {
 ///   "status": "READ"
 /// }
@@ -630,10 +652,7 @@ pub async fn update_message_status(
     let msg_id = match Uuid::parse_str(&message_id) {
         Ok(id) => id,
         Err(_) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                "Invalid message_id format",
-            );
+            return (StatusCode::BAD_REQUEST, "Invalid message_id format");
         }
     };
 
@@ -647,39 +666,30 @@ pub async fn update_message_status(
     }
 
     // First, verify the message exists and the user is the receiver
-    let message_check = match sqlx::query(
-        "SELECT receiver_id FROM messages WHERE id = $1"
-    )
-    .bind(msg_id)
-    .fetch_optional(&state.db)
-    .await {
+    let message_check = match sqlx::query("SELECT receiver_id FROM messages WHERE id = $1")
+        .bind(msg_id)
+        .fetch_optional(&state.db)
+        .await
+    {
         Ok(row) => row,
         Err(e) => {
             info!("Database error checking message: {}", e);
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Database error",
-            );
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Database error");
         }
     };
 
     let receiver_id = match message_check {
-        Some(row) => {
-            match row.try_get::<Uuid, _>("receiver_id") {
-                Ok(id) => id,
-                Err(_) => {
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "Invalid receiver_id in database",
-                    );
-                }
+        Some(row) => match row.try_get::<Uuid, _>("receiver_id") {
+            Ok(id) => id,
+            Err(_) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Invalid receiver_id in database",
+                );
             }
-        }
+        },
         None => {
-            return (
-                StatusCode::NOT_FOUND,
-                "Message not found",
-            );
+            return (StatusCode::NOT_FOUND, "Message not found");
         }
     };
 
@@ -701,7 +711,10 @@ pub async fn update_message_status(
         match delete_result {
             Ok(result) => {
                 if result.rows_affected() > 0 {
-                    info!("Message {} marked as read and deleted by user {}", msg_id, user_id);
+                    info!(
+                        "Message {} marked as read and deleted by user {}",
+                        msg_id, user_id
+                    );
                     (StatusCode::OK, "Message marked as read and deleted")
                 } else {
                     (StatusCode::NOT_FOUND, "Message not found")
@@ -726,7 +739,10 @@ pub async fn update_message_status(
         match update_result {
             Ok(result) => {
                 if result.rows_affected() > 0 {
-                    info!("Message {} status updated to {} by user {}", msg_id, status, user_id);
+                    info!(
+                        "Message {} status updated to {} by user {}",
+                        msg_id, status, user_id
+                    );
                     (StatusCode::OK, "Message status updated")
                 } else {
                     (StatusCode::NOT_FOUND, "Message not found")
