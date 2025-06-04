@@ -23,138 +23,407 @@ constructor(
         private val encryptionRepository: EncryptionRepository,
         private val contactRepository: ContactRepository,
         private val userSession: UserSession,
-        private val remoteRepository: MessageRepository // For remote sync
+        private val remoteRepository: MessageRepository, // For remote sync
+        private val apiService:
+                tech.ziasvannes.safechat.data.remote.ApiService // For fetching contact info
 ) : MessageRepository {
-        override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> = flow {
-                // 1. Fetch remote messages and update local DB if new
-                val remoteMessages = remoteRepository.getMessages(chatSessionId).first()
-                val localMessages = messageDao.getMessagesForChat(chatSessionId.toString()).first()
-                val localIds = localMessages.map { it.id }.toSet()
-                
-                // Filter out self-sent messages to prevent duplicates
-                val currentUserId = userSession.userId ?: UUID(0, 0)
-                val newMessages = remoteMessages.filter { msg ->
-                    msg.id.toString() !in localIds && msg.senderId != currentUserId
-                }
-                
-                for (msg in newMessages) {
-                        // Deduplication: check if message already exists
-                        val exists =
-                                messageDao
-                                        .getMessagesForChat(chatSessionId.toString())
-                                        .first()
-                                        .any { it.id == msg.id.toString() }
-                        if (exists) continue
-                        
-                        // For received messages, decrypt using sender's public key
-                        val contact = contactRepository.getContactById(msg.senderId)
-                        val senderPublicKey = contact?.publicKey
+    override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> = flow {
+        // 1. Fetch remote messages and update local DB if new
+        val remoteMessages = remoteRepository.getMessages(chatSessionId).first()
+        val localMessages = messageDao.getMessagesForChat(chatSessionId.toString()).first()
+        val localIds = localMessages.map { it.id }.toSet()
+        val currentUserId = userSession.userId ?: UUID(0, 0)
 
-                        val decrypted = try {
-                                if (senderPublicKey != null) {
-                                        (encryptionRepository as?
-                                                        tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
-                                                ?.decryptIncomingMessage(
-                                                        senderPublicKeyBase64 =
-                                                                senderPublicKey,
-                                                        encryptedContent =
-                                                                msg.encryptedContent,
-                                                        iv = msg.iv
-                                                )
-                                } else {
-                                        android.util.Log.w(
-                                                "LocalMessageRepository",
-                                                "Missing public key for message ${msg.id} from sender ${msg.senderId}. " +
-                                                        "Contact may need to be added manually to decrypt messages."
-                                        )
-                                        null
-                                }
-                        } catch (e: Exception) {
-                                android.util.Log.e(
-                                        "LocalMessageRepository",
-                                        "Failed to decrypt message ${msg.id} from sender ${msg.senderId}",
-                                        e
-                                )
-                                null
-                        }
-                        
-                        val entity =
-                                MessageEntity(
-                                        id = msg.id.toString(),
-                                        content = msg.content,
-                                        timestamp = msg.timestamp,
-                                        senderId = msg.senderId.toString(),
-                                        receiverId = msg.receiverId.toString(),
-                                        status = msg.status,
-                                        type = msg.type,
-                                        encryptedContent = msg.encryptedContent,
-                                        iv = msg.iv,
-                                        decryptedContent = decrypted
-                                )
-                        messageDao.insertMessage(entity)
-                }
-                // 2. Only emit all local messages as domain models (never remote)
-                messageDao
-                        .getMessagesForChat(chatSessionId.toString())
-                        .map { list -> list.map { it.toMessage() } }
-                        .collect { emit(it) }
-        }
+        // Simple deduplication - only filter out messages that already exist locally
+        val newMessages = remoteMessages.filter { msg -> msg.id.toString() !in localIds }
 
-        override suspend fun sendMessage(message: Message): Result<Message> {
-                // Save locally with original plaintext for the sender's copy
-                messageDao.insertMessage(
-                        MessageEntity(
-                                id = message.id.toString(),
-                                content = message.content, // This is now the original plaintext
-                                timestamp = message.timestamp,
-                                senderId = message.senderId.toString(),
-                                receiverId = message.receiverId.toString(),
-                                status = message.status,
-                                type = message.type,
-                                encryptedContent = message.encryptedContent,
-                                iv = message.iv,
-                                decryptedContent =
-                                        message.content // Use original plaintext for local storage
-                        )
+        android.util.Log.d(
+                "LocalMessageRepository",
+                "Found ${newMessages.size} new messages out of ${remoteMessages.size} remote messages"
+        )
+
+        for (msg in newMessages) {
+            // Double-check for existence (safety net)
+            val exists =
+                    messageDao.getMessagesForChat(chatSessionId.toString()).first().any {
+                        it.id == msg.id.toString()
+                    }
+            if (exists) {
+                android.util.Log.d(
+                        "LocalMessageRepository",
+                        "Message ${msg.id} already exists, skipping"
                 )
-                // Then send remotely
-                return remoteRepository.sendMessage(message)
+                continue
+            }
+
+            val isIncomingMessage = msg.receiverId == currentUserId
+            val isOutgoingMessage = msg.senderId == currentUserId
+
+            android.util.Log.d(
+                    "LocalMessageRepository",
+                    "Processing message ${msg.id}: incoming=$isIncomingMessage, outgoing=$isOutgoingMessage"
+            )
+
+            var decryptedContent: String? = null
+            var shouldStoreMessage = true
+
+            when {
+                isIncomingMessage -> {
+                    // Handle incoming messages
+                    decryptedContent = handleIncomingMessage(msg)
+                    // Always store incoming messages, even if decryption fails
+                    // We'll show an error state in the UI
+                }
+                isOutgoingMessage -> {
+                    // Handle outgoing messages
+                    decryptedContent = msg.content
+                    // Only skip outgoing messages if they're completely corrupted
+                    if (msg.content.isNullOrBlank() && msg.encryptedContent.isEmpty()) {
+                        android.util.Log.w(
+                                "LocalMessageRepository",
+                                "Skipping completely corrupted outgoing message ${msg.id}"
+                        )
+                        shouldStoreMessage = false
+                    }
+                }
+                else -> {
+                    android.util.Log.w(
+                            "LocalMessageRepository",
+                            "Message ${msg.id} has unclear direction: senderId=${msg.senderId}, receiverId=${msg.receiverId}, currentUserId=$currentUserId"
+                    )
+                    // Still try to store it
+                    decryptedContent = msg.content
+                }
+            }
+
+            if (shouldStoreMessage) {
+                val entity =
+                        MessageEntity(
+                                id = msg.id.toString(),
+                                content = msg.content ?: "",
+                                timestamp = msg.timestamp,
+                                senderId = msg.senderId.toString(),
+                                receiverId = msg.receiverId.toString(),
+                                status = msg.status,
+                                type = msg.type,
+                                encryptedContent = msg.encryptedContent,
+                                iv = msg.iv,
+                                decryptedContent = decryptedContent
+                        )
+
+                android.util.Log.d(
+                        "LocalMessageRepository",
+                        "Storing message ${msg.id} - decrypted: ${decryptedContent != null}"
+                )
+                messageDao.insertMessage(entity)
+            }
         }
 
-        override suspend fun updateMessageStatus(messageId: UUID, status: MessageStatus) {
-                messageDao.updateMessageStatus(messageId.toString(), status)
+        // 2. Emit all local messages for this chat
+        messageDao
+                .getMessagesForChat(chatSessionId.toString())
+                .map { list -> list.map { entity -> entity.toMessage() } }
+                .collect { emit(it) }
+    }
+
+    private suspend fun handleIncomingMessage(msg: Message): String? {
+        val currentUserId = userSession.userId ?: return null
+
+        // Skip messages with no encrypted content (these are definitely corrupted)
+        if (msg.encryptedContent.isEmpty() || msg.iv.isEmpty()) {
+            android.util.Log.w(
+                    "LocalMessageRepository",
+                    "Message ${msg.id} has no encrypted content - storing with error state"
+            )
+            return "[🔒 Message could not be decrypted - missing encryption data]"
         }
 
-        override suspend fun deleteMessage(messageId: UUID) {
-                val local =
-                        messageDao.getMessagesForChat("").first().find {
-                                it.id == messageId.toString()
-                        }
-                if (local != null) messageDao.deleteMessage(local)
+        // Find or fetch sender contact
+        var senderContact = contactRepository.getContactById(msg.senderId)
+
+        if (senderContact == null) {
+            android.util.Log.d(
+                    "LocalMessageRepository",
+                    "Sender contact not found for ID ${msg.senderId}, fetching from server"
+            )
+
+            senderContact = fetchContactFromServer(msg.senderId)
         }
 
-        override suspend fun getChatSessions(): Flow<List<ChatSession>> = flow {
-                // Map MessageEntity to ChatSession
-                messageDao
-                        .getChatSessions()
-                        .map { entities ->
-                                entities.map { entity ->
-                                        ChatSession(
-                                                id = UUID.fromString(entity.id),
-                                                participantIds =
-                                                        listOf(
-                                                                UUID.fromString(entity.senderId),
-                                                                UUID.fromString(entity.receiverId)
-                                                        ),
-                                                lastMessage = entity.toMessage(),
-                                                unreadCount = 0, // Not tracked locally
-                                                encryptionStatus =
-                                                        tech.ziasvannes.safechat.data.models
-                                                                .EncryptionStatus
-                                                                .ENCRYPTED // Assume encrypted
-                                        )
-                                }
-                        }
-                        .collect { emit(it) }
+        val senderPublicKey = senderContact?.publicKey
+        if (senderPublicKey.isNullOrBlank()) {
+            android.util.Log.w(
+                    "LocalMessageRepository",
+                    "No public key available for sender ${msg.senderId} - storing with error state"
+            )
+            return "[🔒 Message could not be decrypted - sender key unavailable]"
         }
+
+        // Attempt decryption
+        return try {
+            android.util.Log.d(
+                    "LocalMessageRepository",
+                    "Attempting to decrypt incoming message ${msg.id}"
+            )
+
+            val result =
+                    (encryptionRepository as?
+                                    tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
+                            ?.decryptIncomingMessage(
+                                    senderPublicKeyBase64 = senderPublicKey,
+                                    encryptedContent = msg.encryptedContent,
+                                    iv = msg.iv
+                            )
+
+            if (result != null) {
+                android.util.Log.d(
+                        "LocalMessageRepository",
+                        "Successfully decrypted incoming message ${msg.id}"
+                )
+                result
+            } else {
+                android.util.Log.w(
+                        "LocalMessageRepository",
+                        "Decryption returned null for message ${msg.id}"
+                )
+                "[🔒 Message could not be decrypted - decryption failed]"
+            }
+        } catch (e: Exception) {
+            android.util.Log.e(
+                    "LocalMessageRepository",
+                    "Failed to decrypt incoming message ${msg.id}: ${e.message}",
+                    e
+            )
+            "[🔒 Message could not be decrypted - ${e.message?.take(50) ?: "unknown error"}]"
+        }
+    }
+
+    private suspend fun fetchContactFromServer(
+            senderId: UUID
+    ): tech.ziasvannes.safechat.data.models.Contact? {
+        return try {
+            val userResponse = apiService.getUserById(senderId.toString())
+
+            val newContact =
+                    tech.ziasvannes.safechat.data.models.Contact(
+                            id = UUID.fromString(userResponse.id),
+                            name = userResponse.username,
+                            publicKey = userResponse.public_key,
+                            lastSeen = System.currentTimeMillis(),
+                            status = tech.ziasvannes.safechat.data.models.ContactStatus.ONLINE,
+                            avatar = userResponse.avatar
+                    )
+
+            contactRepository.addContact(newContact)
+            android.util.Log.d(
+                    "LocalMessageRepository",
+                    "Added new contact: ${newContact.name} with ID ${newContact.id}"
+            )
+
+            newContact
+        } catch (e: Exception) {
+            android.util.Log.e(
+                    "LocalMessageRepository",
+                    "Failed to fetch contact info for $senderId: ${e.message}",
+                    e
+            )
+            null
+        }
+    }
+
+    override suspend fun sendMessage(message: Message): Result<Message> {
+        // Save locally with original plaintext for the sender's copy
+        messageDao.insertMessage(
+                MessageEntity(
+                        id = message.id.toString(),
+                        content = message.content ?: "",
+                        timestamp = message.timestamp,
+                        senderId = message.senderId.toString(),
+                        receiverId = message.receiverId.toString(),
+                        status = MessageStatus.SENDING,
+                        type = message.type,
+                        encryptedContent = message.encryptedContent,
+                        iv = message.iv,
+                        decryptedContent = message.content
+                )
+        )
+
+        // Send remotely and update local status
+        val result = remoteRepository.sendMessage(message)
+
+        result
+                .onSuccess { sentMessage ->
+                    messageDao.updateMessageStatus(message.id.toString(), MessageStatus.SENT)
+                }
+                .onFailure {
+                    messageDao.updateMessageStatus(message.id.toString(), MessageStatus.FAILED)
+                }
+
+        return result
+    }
+
+    override suspend fun updateMessageStatus(messageId: UUID, status: MessageStatus) {
+        messageDao.updateMessageStatus(messageId.toString(), status)
+    }
+
+    override suspend fun deleteMessage(messageId: UUID) {
+        val local = messageDao.getMessagesForChat("").first().find { it.id == messageId.toString() }
+        if (local != null) messageDao.deleteMessage(local)
+    }
+
+    override suspend fun getChatSessions(): Flow<List<ChatSession>> = flow {
+        messageDao
+                .getChatSessions()
+                .map { entities ->
+                    entities.map { entity ->
+                        ChatSession(
+                                id = UUID.fromString(entity.id),
+                                participantIds =
+                                        listOf(
+                                                UUID.fromString(entity.senderId),
+                                                UUID.fromString(entity.receiverId)
+                                        ),
+                                lastMessage = entity.toMessage(),
+                                unreadCount = 0,
+                                encryptionStatus =
+                                        tech.ziasvannes.safechat.data.models.EncryptionStatus
+                                                .ENCRYPTED
+                        )
+                    }
+                }
+                .collect { emit(it) }
+    }
+
+    /**
+     * Marks received messages as read for the specified chat session. Updates status locally and
+     * notifies the server. Messages are kept locally for chat history - they are not deleted.
+     */
+    suspend fun markMessagesAsRead(chatSessionId: UUID) {
+        val currentUserId = userSession.userId ?: return
+
+        try {
+            val localMessages = messageDao.getMessagesForChat(chatSessionId.toString()).first()
+            val unreadReceivedMessages =
+                    localMessages.filter { message ->
+                        UUID.fromString(message.receiverId) == currentUserId &&
+                                message.status != MessageStatus.READ
+                    }
+
+            if (unreadReceivedMessages.isEmpty()) {
+                android.util.Log.d(
+                        "LocalMessageRepository",
+                        "No unread messages for chat $chatSessionId"
+                )
+                return
+            }
+
+            // Update local database status to READ first (for immediate UI update)
+            unreadReceivedMessages.forEach { message ->
+                messageDao.updateMessageStatus(message.id, MessageStatus.READ)
+            }
+
+            // Then notify server (don't block UI on this)
+            unreadReceivedMessages.forEach { message ->
+                try {
+                    remoteRepository.updateMessageStatus(
+                            UUID.fromString(message.id),
+                            MessageStatus.READ
+                    )
+                    android.util.Log.d(
+                            "LocalMessageRepository",
+                            "Notified server that message ${message.id} was read"
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.w(
+                            "LocalMessageRepository",
+                            "Failed to notify server about read status for message ${message.id}",
+                            e
+                    )
+                    // Don't fail the whole operation if server notification fails
+                }
+            }
+
+            android.util.Log.d(
+                    "LocalMessageRepository",
+                    "Marked ${unreadReceivedMessages.size} messages as read for chat $chatSessionId"
+            )
+        } catch (e: Exception) {
+            android.util.Log.w(
+                    "LocalMessageRepository",
+                    "Failed to mark messages as read for chat $chatSessionId",
+                    e
+            )
+        }
+    }
+
+    /**
+     * Optional: Delete messages that have been read (if this behavior is desired) Call this
+     * separately from markMessagesAsRead if you want to delete read messages
+     */
+    suspend fun deleteReadMessages(chatSessionId: UUID) {
+        val currentUserId = userSession.userId ?: return
+
+        try {
+            val localMessages = messageDao.getMessagesForChat(chatSessionId.toString()).first()
+            val readReceivedMessages =
+                    localMessages.filter { message ->
+                        UUID.fromString(message.receiverId) == currentUserId &&
+                                message.status == MessageStatus.READ
+                    }
+
+            readReceivedMessages.forEach { message ->
+                messageDao.deleteMessage(message)
+                android.util.Log.d("LocalMessageRepository", "Deleted read message ${message.id}")
+            }
+
+            if (readReceivedMessages.isNotEmpty()) {
+                android.util.Log.d(
+                        "LocalMessageRepository",
+                        "Deleted ${readReceivedMessages.size} read messages for chat $chatSessionId"
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.w(
+                    "LocalMessageRepository",
+                    "Failed to delete read messages for chat $chatSessionId",
+                    e
+            )
+        }
+    }
+
+    /** Cleans up only truly corrupted messages that cannot be displayed */
+    suspend fun cleanupCorruptedMessages() {
+        try {
+            val allMessages = messageDao.getAllMessages().first()
+            val corruptedMessages =
+                    allMessages.filter { message ->
+                        // Only delete messages that are completely unusable
+                        val hasNoContent =
+                                message.content.isBlank() &&
+                                        message.decryptedContent.isNullOrBlank() &&
+                                        message.encryptedContent.isEmpty()
+
+                        val hasDuplicateId = allMessages.count { it.id == message.id } > 1
+
+                        hasNoContent || hasDuplicateId
+                    }
+
+            if (corruptedMessages.isNotEmpty()) {
+                android.util.Log.i(
+                        "LocalMessageRepository",
+                        "Cleaning up ${corruptedMessages.size} truly corrupted messages"
+                )
+
+                corruptedMessages.forEach { message ->
+                    android.util.Log.d(
+                            "LocalMessageRepository",
+                            "Removing corrupted message ${message.id}"
+                    )
+                    messageDao.deleteMessage(message)
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("LocalMessageRepository", "Failed to cleanup corrupted messages", e)
+        }
+    }
 }

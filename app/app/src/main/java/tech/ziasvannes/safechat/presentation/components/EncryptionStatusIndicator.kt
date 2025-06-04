@@ -43,17 +43,24 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  * @param modifier Optional modifier for styling the indicator.
  */
 @Composable
-fun EncryptionStatusIndicator(status: EncryptionStatus, modifier: Modifier = Modifier) {
+fun EncryptionStatusIndicator(
+    status: EncryptionStatus, 
+    modifier: Modifier = Modifier,
+    showError: Boolean = false,
+    statusMessage: String? = null
+) {
     val backgroundColor =
             animateColorAsState(
                     targetValue =
-                            when (status) {
-                                EncryptionStatus.ENCRYPTED ->
+                            when {
+                                showError -> MaterialTheme.colorScheme.errorContainer
+                                status == EncryptionStatus.ENCRYPTED ->
                                         SafeChatColors.Encrypted.copy(alpha = 0.2f)
-                                EncryptionStatus.NOT_ENCRYPTED ->
+                                status == EncryptionStatus.NOT_ENCRYPTED ->
                                         SafeChatColors.NotEncrypted.copy(alpha = 0.2f)
-                                EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS ->
+                                status == EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS ->
                                         SafeChatColors.KeyExchangeInProgress.copy(alpha = 0.2f)
+                                else -> SafeChatColors.NotEncrypted.copy(alpha = 0.2f)
                             },
                     animationSpec = tween(300),
                     label = "Background Color Animation"
@@ -62,11 +69,13 @@ fun EncryptionStatusIndicator(status: EncryptionStatus, modifier: Modifier = Mod
     val contentColor =
             animateColorAsState(
                     targetValue =
-                            when (status) {
-                                EncryptionStatus.ENCRYPTED -> SafeChatColors.Encrypted
-                                EncryptionStatus.NOT_ENCRYPTED -> SafeChatColors.NotEncrypted
-                                EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS ->
+                            when {
+                                showError -> MaterialTheme.colorScheme.error
+                                status == EncryptionStatus.ENCRYPTED -> SafeChatColors.Encrypted
+                                status == EncryptionStatus.NOT_ENCRYPTED -> SafeChatColors.NotEncrypted
+                                status == EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS ->
                                         SafeChatColors.KeyExchangeInProgress
+                                else -> SafeChatColors.NotEncrypted
                             },
                     animationSpec = tween(300),
                     label = "Content Color Animation"
@@ -122,12 +131,13 @@ fun EncryptionStatusIndicator(status: EncryptionStatus, modifier: Modifier = Mod
 
         // Status text
         Text(
-                text =
-                        when (status) {
-                            EncryptionStatus.ENCRYPTED -> "Encrypted"
-                            EncryptionStatus.NOT_ENCRYPTED -> "Not Encrypted"
-                            EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS -> "Setting up encryption..."
-                        },
+                text = when {
+                    statusMessage != null -> statusMessage
+                    status == EncryptionStatus.ENCRYPTED -> "Encrypted"
+                    status == EncryptionStatus.NOT_ENCRYPTED -> "Not Encrypted"
+                    status == EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS -> "Setting up encryption..."
+                    else -> "Unknown status"
+                },
                 style = MaterialTheme.typography.labelMedium,
                 color = contentColor.value
         )
@@ -157,6 +167,19 @@ fun EncryptionStatusIndicatorPreview() {
 
                 // Key exchange in progress status
                 EncryptionStatusIndicator(status = EncryptionStatus.KEY_EXCHANGE_IN_PROGRESS)
+                
+                // Error state
+                EncryptionStatusIndicator(
+                    status = EncryptionStatus.ENCRYPTED, 
+                    showError = true,
+                    statusMessage = "Cannot decrypt messages"
+                )
+                
+                // Custom message
+                EncryptionStatusIndicator(
+                    status = EncryptionStatus.ENCRYPTED,
+                    statusMessage = "Messages are end-to-end encrypted"
+                )
             }
         }
     }

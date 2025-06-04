@@ -33,7 +33,6 @@ struct Claims {
 #[derive(serde::Serialize)]
 pub struct MessageResponse {
     pub id: String,
-    pub content: String,
     pub timestamp: i64,
     pub sender_id: String,
     pub receiver_id: String,
@@ -45,7 +44,6 @@ pub struct MessageResponse {
 
 #[derive(serde::Deserialize)]
 pub struct SendMessageRequest {
-    pub content: String,
     pub receiver_id: String,
     pub r#type: String,
     pub encrypted_content: String,
@@ -193,6 +191,97 @@ pub async fn get_user_by_public_key(
     (axum::http::StatusCode::OK, Json(user)).into_response()
 }
 
+/// Retrieves user information by user ID, requiring JWT authentication.
+///
+/// Returns the user's details as JSON if found; otherwise, returns an appropriate HTTP error status.
+///
+/// # Examples
+///
+/// ```
+/// // Example Axum route usage:
+/// // GET /user/by-id/{user_id} with Authorization: Bearer <token>
+/// let response = get_user_by_id(
+///     Path("user-uuid-string".to_string()),
+///     State(app_state_arc),
+///     headers_with_valid_jwt()
+/// ).await;
+/// assert_eq!(response.status(), StatusCode::OK);
+/// ```
+pub async fn get_user_by_id(
+    Path(user_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    let auth_result = extract_user_id_from_auth(&headers, &state.jwt_secret);
+    let requesting_user = match auth_result {
+        Ok(uid) => uid,
+        Err(e) => {
+            info!("Unauthorized access attempt to /user/by-id/{{}} endpoint");
+            return e.into_response();
+        }
+    };
+    
+    // Parse the user ID
+    let target_user_id = match Uuid::parse_str(&user_id) {
+        Ok(uid) => uid,
+        Err(_) => {
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                "Invalid user_id format",
+            )
+                .into_response();
+        }
+    };
+    
+    info!(
+        "User {} requested user lookup by ID: {}",
+        requesting_user, target_user_id
+    );
+    
+    let row = match sqlx::query(
+        "SELECT id, username, public_key, created_at, avatar FROM users WHERE id = $1",
+    )
+    .bind(&target_user_id)
+    .fetch_optional(&state.db)
+    .await
+    {
+        Ok(Some(record)) => record,
+        Ok(None) => {
+            info!("User not found for ID: {}", target_user_id);
+            return (axum::http::StatusCode::NOT_FOUND, "User not found").into_response();
+        }
+        Err(err) => {
+            info!("Database error in /user/by-id/{{user_id}}: {}", err);
+            return (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Database error",
+            )
+                .into_response();
+        }
+    };
+    
+    let user = UserResponse {
+        id: row.try_get::<Uuid, _>("id").unwrap().to_string(),
+        username: row.try_get::<String, _>("username").unwrap(),
+        public_key: row.try_get::<String, _>("public_key").unwrap(),
+        created_at: row
+            .try_get::<chrono::DateTime<chrono::Utc>, _>("created_at")
+            .unwrap()
+            .to_rfc3339(),
+        avatar: row
+            .try_get::<Option<Vec<u8>>, _>("avatar")
+            .ok()
+            .flatten()
+            .map(base64::encode),
+    };
+    
+    info!(
+        "User found for ID: {} (username: {})",
+        target_user_id, user.username
+    );
+    (axum::http::StatusCode::OK, Json(user)).into_response()
+}
+
 /// Handles sending a new message from the authenticated user to a specified recipient.
 ///
 /// Validates the JWT Bearer token from the `Authorization` header, parses and verifies the recipient's UUID,
@@ -261,10 +350,9 @@ pub async fn send_message(
     };
     // Insert into DB
     let res = sqlx::query(
-        "INSERT INTO messages (id, content, timestamp, sender_id, receiver_id, status, type, encrypted_content, iv) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
+        "INSERT INTO messages (id, timestamp, sender_id, receiver_id, status, type, encrypted_content, iv) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
     )
     .bind(id)
-    .bind(&payload.content)
     .bind(timestamp)
     .bind(sender_id)
     .bind(receiver_id)
@@ -283,7 +371,6 @@ pub async fn send_message(
     }
     let response = MessageResponse {
         id: id.to_string(),
-        content: payload.content,
         timestamp,
         sender_id: sender_id.to_string(),
         receiver_id: receiver_id.to_string(),
@@ -333,6 +420,7 @@ pub async fn send_message(
 ///     headers
 /// ).await;
 /// ```
+
 pub async fn get_messages_with_user(
     Path(user_id): Path<String>,
     State(state): State<Arc<AppState>>,
@@ -359,7 +447,7 @@ pub async fn get_messages_with_user(
     };
     // Query messages between requesting_user and other_user
     let rows = match sqlx::query(
-        "SELECT id, content, timestamp, sender_id, receiver_id, status, type, encrypted_content, iv FROM messages WHERE (sender_id = $1 AND receiver_id = $2) OR (sender_id = $2 AND receiver_id = $1) ORDER BY timestamp ASC"
+        "SELECT id, timestamp, sender_id, receiver_id, status, type, encrypted_content, iv FROM messages WHERE (sender_id = $1 AND receiver_id = $2) OR (sender_id = $2 AND receiver_id = $1) ORDER BY timestamp ASC"
     )
     .bind(requesting_user)
     .bind(other_user)
@@ -379,7 +467,6 @@ pub async fn get_messages_with_user(
         .into_iter()
         .map(|row| MessageResponse {
             id: row.try_get::<Uuid, _>("id").unwrap().to_string(),
-            content: row.try_get::<String, _>("content").unwrap_or_default(),
             timestamp: row.try_get::<i64, _>("timestamp").unwrap_or_default(),
             sender_id: row.try_get::<Uuid, _>("sender_id").unwrap().to_string(),
             receiver_id: row.try_get::<Uuid, _>("receiver_id").unwrap().to_string(),
@@ -473,12 +560,11 @@ pub async fn db_dump(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         Err(_) => vec![],
     };
     // Fetch messages
-    let messages = match sqlx::query(r#"SELECT id, content, timestamp, sender_id, receiver_id, status, type, encrypted_content, iv FROM messages"#)
+    let messages = match sqlx::query(r#"SELECT id, timestamp, sender_id, receiver_id, status, type, encrypted_content, iv FROM messages"#)
         .fetch_all(&state.db)
         .await {
             Ok(rows) => rows.into_iter().map(|row| {
                 let id: sqlx::types::Uuid = row.try_get("id").unwrap();
-                let content: Option<String> = row.try_get("content").ok().flatten();
                 let timestamp: Option<i64> = row.try_get("timestamp").ok().flatten();
                 let sender_id: sqlx::types::Uuid = row.try_get("sender_id").unwrap();
                 let receiver_id: sqlx::types::Uuid = row.try_get("receiver_id").unwrap();
@@ -488,7 +574,6 @@ pub async fn db_dump(State(state): State<Arc<AppState>>) -> impl IntoResponse {
                 let iv: Option<Vec<u8>> = row.try_get("iv").ok().flatten();
                 json!({
                     "id": id,
-                    "content": content,
                     "timestamp": timestamp,
                     "sender_id": sender_id,
                     "receiver_id": receiver_id,

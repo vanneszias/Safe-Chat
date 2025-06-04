@@ -23,30 +23,36 @@ constructor(private val apiService: ApiService, private val userSession: UserSes
      * remote API.
      *
      * The flow emits the current set of messages for the specified chat session ID as retrieved
-     * from the remote service. Additionally, any received messages (where current user is the
-     * receiver) are automatically marked as READ, which causes the server to delete them to prevent
-     * duplicates.
+     * from the remote service. Messages are NOT automatically marked as read - this should be done
+     * explicitly when the user actually views the chat.
      *
      * @param chatSessionId Unique identifier of the chat session whose messages are to be fetched.
      * @return A flow emitting the list of messages for the specified chat session.
      */
     override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> = flow {
         val messages = apiService.getMessages(chatSessionId.toString())
-        val messageList = messages.map { it.toMessage() }
-
-        // Mark received messages as read to prevent duplicates
-        val currentUserId = userSession.userId
-        if (currentUserId != null) {
-            messageList
-                    .filter { message ->
-                        message.receiverId == currentUserId && message.status != MessageStatus.READ
-                    }
-                    .forEach { message ->
-                        // Mark as read - this will cause the server to delete the message
-                        runCatching { updateMessageStatus(message.id, MessageStatus.READ) }
-                    }
+        
+        // Filter out messages with null/empty encrypted content that may have been
+        // corrupted due to server-side deletion when receiver marked them as read
+        val validMessages = messages.filter { messageResponse ->
+            val hasValidEncryptedContent = !messageResponse.encrypted_content.isNullOrBlank()
+            val hasValidIv = !messageResponse.iv.isNullOrBlank()
+            
+            if (!hasValidEncryptedContent || !hasValidIv) {
+                android.util.Log.w(
+                    "MessageRepository",
+                    "Filtering out message ${messageResponse.id} with invalid encrypted data - likely deleted by receiver"
+                )
+            }
+            
+            hasValidEncryptedContent && hasValidIv
         }
+        
+        val messageList = validMessages.map { it.toMessage() }
 
+        // DO NOT automatically mark messages as read here
+        // Messages should only be marked as read when user explicitly views them
+        
         emit(messageList)
     }
 
@@ -68,7 +74,7 @@ constructor(private val apiService: ApiService, private val userSession: UserSes
     /**
      * Updates the status of a message via the remote API.
      *
-     * Sends a request to update the message status on the server. When marking a message as READ,
+     * Sends a request to update the message status on the server. When marking a message as read,
      * the server will automatically delete it to prevent duplicates.
      */
     override suspend fun updateMessageStatus(messageId: UUID, status: MessageStatus) {
@@ -80,6 +86,8 @@ constructor(private val apiService: ApiService, private val userSession: UserSes
             apiService.updateMessageStatus(messageId.toString(), request)
         }
     }
+
+
 
     /**
      * Deletes a message via the remote API.
@@ -111,25 +119,42 @@ constructor(private val apiService: ApiService, private val userSession: UserSes
  *
  * Decodes Base64-encoded encrypted content and IV, parses UUIDs, and maps status and type fields to
  * their corresponding enums. Unknown or unsupported message types default to [MessageType.Text].
+ * Handles Base64 decoding errors gracefully for messages that may have been corrupted.
  *
  * @return The converted [Message] object.
  */
-private fun MessageResponse.toMessage(): Message =
-        Message(
-                id = UUID.fromString(id),
-                content = content,
-                timestamp = timestamp,
-                senderId = UUID.fromString(sender_id),
-                receiverId = UUID.fromString(receiver_id),
-                status = MessageStatus.valueOf(status),
-                type =
-                        when (type) {
-                            "Text" -> MessageType.Text
-                            else -> MessageType.Text // Extend for Image/File
-                        },
-                encryptedContent = Base64.getDecoder().decode(encrypted_content),
-                iv = Base64.getDecoder().decode(iv)
-        )
+private fun MessageResponse.toMessage(): Message {
+    // Safe Base64 decoding with error handling
+    val decodedEncryptedContent = try {
+        Base64.getDecoder().decode(encrypted_content)
+    } catch (e: IllegalArgumentException) {
+        android.util.Log.w("MessageRepository", "Failed to decode encrypted_content for message $id", e)
+        ByteArray(0) // Return empty array if decoding fails
+    }
+    
+    val decodedIv = try {
+        Base64.getDecoder().decode(iv)
+    } catch (e: IllegalArgumentException) {
+        android.util.Log.w("MessageRepository", "Failed to decode IV for message $id", e)
+        ByteArray(0) // Return empty array if decoding fails
+    }
+    
+    return Message(
+            id = UUID.fromString(id),
+            content = content,
+            timestamp = timestamp,
+            senderId = UUID.fromString(sender_id),
+            receiverId = UUID.fromString(receiver_id),
+            status = MessageStatus.valueOf(status),
+            type =
+                    when (type) {
+                        "Text" -> MessageType.Text
+                        else -> MessageType.Text // Extend for Image/File
+                    },
+            encryptedContent = decodedEncryptedContent,
+            iv = decodedIv
+    )
+}
 
 /**
  * Converts a [Message] object to a [SendMessageRequest] for sending via the API.
@@ -142,7 +167,6 @@ private fun MessageResponse.toMessage(): Message =
  */
 private fun Message.toSendMessageRequest(): SendMessageRequest =
         SendMessageRequest(
-                content = "", // Don't send plaintext content to server for security
                 receiver_id = receiverId.toString(),
                 type =
                         when (type) {

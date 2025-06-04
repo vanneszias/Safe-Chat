@@ -51,7 +51,25 @@ fun ChatScreen(
     val state by viewModel.state.collectAsState()
 
     // If chatSessionId is provided, load messages and contact for that chat session
-    LaunchedEffect(chatSessionId) { chatSessionId?.let { viewModel.loadChat(it) } }
+    LaunchedEffect(chatSessionId) { 
+        chatSessionId?.let { 
+            viewModel.loadChat(it)
+        }
+    }
+    
+    // Mark messages as read when chat is loaded and user can see messages
+    LaunchedEffect(chatSessionId, state.messages.size) {
+        if (chatSessionId != null && state.messages.isNotEmpty() && !state.isLoading) {
+            // Only mark as read if there are unread received messages
+            val hasUnreadMessages = state.messages.any { message ->
+                message.receiverId == state.currentUserId && 
+                message.status != tech.ziasvannes.safechat.data.models.MessageStatus.READ
+            }
+            if (hasUnreadMessages) {
+                viewModel.onEvent(ChatEvent.MarkMessagesAsRead)
+            }
+        }
+    }
 
     Scaffold(
             topBar = {
@@ -70,6 +88,8 @@ fun ChatScreen(
                             state.encryptionStatus?.let { status ->
                                 EncryptionStatusIndicator(
                                         status = status,
+                                        showError = state.hasDecryptionErrors,
+                                        statusMessage = state.encryptionStatusMessage,
                                         modifier = Modifier.padding(end = 8.dp)
                                 )
                             }
@@ -82,6 +102,37 @@ fun ChatScreen(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // Show retry encryption button if there are decryption errors
+            if (state.hasDecryptionErrors) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Some messages couldn't be decrypted",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { viewModel.onEvent(ChatEvent.RetryEncryption) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            )
+                        ) {
+                            Text("Retry Encryption")
+                        }
+                    }
+                }
+            }
+            
             // Messages List
             LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxWidth(),

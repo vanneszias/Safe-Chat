@@ -1,4 +1,4 @@
-use crate::crypto::generate_keypair_base64;
+use crate::crypto::{generate_keypair_base64, validate_x509_public_key};
 use crate::state::AppState;
 use argon2::password_hash::{SaltString, rand_core::OsRng};
 use argon2::{Argon2, PasswordHasher, PasswordVerifier};
@@ -470,6 +470,13 @@ pub async fn update_public_key(
             return (StatusCode::BAD_REQUEST, "Invalid JSON").into_response();
         }
     };
+    
+    // Validate public key format (must be X.509-encoded X25519 key)
+    if !validate_x509_public_key(&payload.public_key) {
+        info!("Update key failed: invalid X.509 public key format for user '{}'", user_id);
+        return (StatusCode::BAD_REQUEST, "Invalid public key format. Must be X.509-encoded X25519 key").into_response();
+    }
+    
     // Update public key in DB
     let res = sqlx::query("UPDATE users SET public_key = $1 WHERE id = $2")
         .bind(&payload.public_key)

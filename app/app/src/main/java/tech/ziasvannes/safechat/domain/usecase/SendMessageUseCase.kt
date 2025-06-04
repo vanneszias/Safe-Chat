@@ -31,19 +31,7 @@ constructor(
          * @param type The type of message to send (defaults to text).
          * @return A [Result] containing the sent [Message] on success, or an exception on failure.
          */
-        /**
-         * Sends a plaintext message to a specified recipient, bypassing encryption.
-         *
-         * Retrieves the recipient's contact information and constructs a new message using the
-         * current user's ID as the sender. The message is sent via the message repository with
-         * empty encryption fields. Throws an exception if the recipient is not found or if the user
-         * ID is not set in the session.
-         *
-         * @param content The plaintext content of the message to send.
-         * @param receiverId The UUID of the message recipient.
-         * @param type The type of the message, defaulting to text.
-         * @return A [Result] containing the sent [Message] on success, or an exception on failure.
-         */
+
         suspend operator fun invoke(
                 content: String,
                 receiverId: UUID,

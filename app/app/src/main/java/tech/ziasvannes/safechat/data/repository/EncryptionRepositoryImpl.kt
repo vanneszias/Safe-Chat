@@ -102,15 +102,25 @@ class EncryptionRepositoryImpl @Inject constructor(private val context: Context)
         override suspend fun computeSharedSecret(publicKey: PublicKey): ByteArray {
                 ensureKeyPairExists()
                 val privateKey = getPrivateKey()
-                val keyAgreement = KeyAgreement.getInstance("X25519")
-                keyAgreement.init(privateKey)
-                keyAgreement.doPhase(publicKey, true)
-                val sharedSecret = keyAgreement.generateSecret()
-                Log.d(
-                        "EncryptionRepo",
-                        "Computed Shared Secret (Base64): ${Base64.encodeToString(sharedSecret, Base64.NO_WRAP)}"
-                )
-                return sharedSecret
+                Log.d("EncryptionRepo", "Computing shared secret...")
+                Log.d("EncryptionRepo", "Private key algorithm: ${privateKey.algorithm}")
+                Log.d("EncryptionRepo", "Public key algorithm: ${publicKey.algorithm}")
+
+                try {
+                        val keyAgreement = KeyAgreement.getInstance("X25519")
+                        keyAgreement.init(privateKey)
+                        keyAgreement.doPhase(publicKey, true)
+                        val sharedSecret = keyAgreement.generateSecret()
+                        Log.d(
+                                "EncryptionRepo",
+                                "Successfully computed shared secret (Base64): ${Base64.encodeToString(sharedSecret, Base64.NO_WRAP)}"
+                        )
+                        Log.d("EncryptionRepo", "Shared secret length: ${sharedSecret.size} bytes")
+                        return sharedSecret
+                } catch (e: Exception) {
+                        Log.e("EncryptionRepo", "Failed to compute shared secret", e)
+                        throw e
+                }
         }
 
         override suspend fun encryptMessage(
@@ -137,19 +147,35 @@ class EncryptionRepositoryImpl @Inject constructor(private val context: Context)
                 iv: ByteArray,
                 sharedSecret: ByteArray
         ): String {
-                val key = javax.crypto.spec.SecretKeySpec(sharedSecret, "AES")
-                val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
-                val gcmSpec = javax.crypto.spec.GCMParameterSpec(128, iv)
-                cipher.init(javax.crypto.Cipher.DECRYPT_MODE, key, gcmSpec)
-                Log.d(
-                        "EncryptionRepo",
-                        "Decrypting Ciphertext (Base64): ${Base64.encodeToString(encryptedContent, Base64.NO_WRAP)}"
-                )
-                Log.d("EncryptionRepo", "IV (Base64): ${Base64.encodeToString(iv, Base64.NO_WRAP)}")
-                val plaintext = cipher.doFinal(encryptedContent)
-                val result = String(plaintext, Charsets.UTF_8)
-                Log.d("EncryptionRepo", "Decrypted message: $result")
-                return result
+                Log.d("EncryptionRepo", "decryptMessage called")
+                Log.d("EncryptionRepo", "Shared secret length: ${sharedSecret.size} bytes")
+                Log.d("EncryptionRepo", "IV length: ${iv.size} bytes")
+                Log.d("EncryptionRepo", "Encrypted content length: ${encryptedContent.size} bytes")
+                
+                try {
+                        val key = javax.crypto.spec.SecretKeySpec(sharedSecret, "AES")
+                        val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
+                        val gcmSpec = javax.crypto.spec.GCMParameterSpec(128, iv)
+                        cipher.init(javax.crypto.Cipher.DECRYPT_MODE, key, gcmSpec)
+                        
+                        Log.d(
+                                "EncryptionRepo",
+                                "Decrypting Ciphertext (Base64): ${Base64.encodeToString(encryptedContent, Base64.NO_WRAP)}"
+                        )
+                        Log.d("EncryptionRepo", "IV (Base64): ${Base64.encodeToString(iv, Base64.NO_WRAP)}")
+                        Log.d("EncryptionRepo", "Shared Secret (Base64): ${Base64.encodeToString(sharedSecret, Base64.NO_WRAP)}")
+                        
+                        val plaintext = cipher.doFinal(encryptedContent)
+                        val result = String(plaintext, Charsets.UTF_8)
+                        Log.d("EncryptionRepo", "Successfully decrypted message: $result")
+                        return result
+                } catch (e: Exception) {
+                        Log.e("EncryptionRepo", "Decryption failed", e)
+                        Log.e("EncryptionRepo", "Shared secret (Base64): ${Base64.encodeToString(sharedSecret, Base64.NO_WRAP)}")
+                        Log.e("EncryptionRepo", "IV (Base64): ${Base64.encodeToString(iv, Base64.NO_WRAP)}")
+                        Log.e("EncryptionRepo", "Encrypted content (Base64): ${Base64.encodeToString(encryptedContent, Base64.NO_WRAP)}")
+                        throw e
+                }
         }
 
         override suspend fun getCurrentPublicKey(): String? {
@@ -169,33 +195,40 @@ class EncryptionRepositoryImpl @Inject constructor(private val context: Context)
 
         suspend fun publicKeyFromBase64(base64: String): PublicKey {
                 Log.d("EncryptionRepo", "publicKeyFromBase64 input: $base64")
-                val pubBytes = Base64.decode(base64, Base64.NO_WRAP)
-                val keyFactory = KeyFactory.getInstance("X25519")
-                // If the input is 32 bytes, it's a raw key, so wrap it in X.509 format
-                return if (pubBytes.size == 32) {
-                        Log.w(
-                                "EncryptionRepo",
-                                "publicKeyFromBase64: Detected raw 32-byte key, wrapping as X.509"
-                        )
-                        val x509Header =
-                                byteArrayOf(
-                                        0x30.toByte(),
-                                        0x2a.toByte(),
-                                        0x30.toByte(),
-                                        0x05.toByte(),
-                                        0x06.toByte(),
-                                        0x03.toByte(),
-                                        0x2b.toByte(),
-                                        0x65.toByte(),
-                                        0x6e.toByte(),
-                                        0x03.toByte(),
-                                        0x21.toByte(),
-                                        0x00.toByte()
+                try {
+                        val pubBytes = Base64.decode(base64, Base64.NO_WRAP)
+                        val keyFactory = KeyFactory.getInstance("X25519")
+
+                        // Log the decoded byte length for debugging
+                        Log.d("EncryptionRepo", "Decoded key length: ${pubBytes.size} bytes")
+
+                        // If the input is 32 bytes, it's a raw key, so wrap it in X.509 format
+                        return if (pubBytes.size == 32) {
+                                Log.w(
+                                        "EncryptionRepo",
+                                        "publicKeyFromBase64: Detected raw 32-byte key, wrapping as X.509"
                                 )
-                        val x509Bytes = x509Header + pubBytes
-                        keyFactory.generatePublic(X509EncodedKeySpec(x509Bytes))
-                } else {
-                        keyFactory.generatePublic(X509EncodedKeySpec(pubBytes))
+                                // X.509 ASN.1 header for X25519 public keys (matches backend)
+                                val x509Header =
+                                        byteArrayOf(
+                                                0x30.toByte(), 0x2a.toByte(), 0x30.toByte(), 0x05.toByte(),
+                                                0x06.toByte(), 0x03.toByte(), 0x2b.toByte(), 0x65.toByte(),
+                                                0x6e.toByte(), 0x03.toByte(), 0x21.toByte(), 0x00.toByte()
+                                        )
+                                val x509Bytes = x509Header + pubBytes
+                                Log.d("EncryptionRepo", "Created X.509 key with length: ${x509Bytes.size}")
+                                keyFactory.generatePublic(X509EncodedKeySpec(x509Bytes))
+                        } else if (pubBytes.size == 44) {
+                                // Already X.509 encoded (12-byte header + 32-byte key)
+                                Log.d("EncryptionRepo", "Using X.509-encoded key directly")
+                                keyFactory.generatePublic(X509EncodedKeySpec(pubBytes))
+                        } else {
+                                Log.e("EncryptionRepo", "Invalid key length: ${pubBytes.size}. Expected 32 (raw) or 44 (X.509) bytes")
+                                throw IllegalArgumentException("Invalid key length: ${pubBytes.size} bytes")
+                        }
+                } catch (e: Exception) {
+                        Log.e("EncryptionRepo", "Failed to decode public key from base64: $base64", e)
+                        throw IllegalArgumentException("Invalid public key format", e)
                 }
         }
 
@@ -204,8 +237,28 @@ class EncryptionRepositoryImpl @Inject constructor(private val context: Context)
                 encryptedContent: ByteArray,
                 iv: ByteArray
         ): String {
-                val senderPublicKey = publicKeyFromBase64(senderPublicKeyBase64)
-                val sharedSecret = computeSharedSecret(senderPublicKey)
-                return decryptMessage(encryptedContent, iv, sharedSecret)
+                Log.d("EncryptionRepo", "decryptIncomingMessage called")
+                Log.d("EncryptionRepo", "Sender public key: $senderPublicKeyBase64")
+                Log.d("EncryptionRepo", "Encrypted content length: ${encryptedContent.size}")
+                Log.d("EncryptionRepo", "IV length: ${iv.size}")
+
+                try {
+                        val senderPublicKey = publicKeyFromBase64(senderPublicKeyBase64)
+                        Log.d("EncryptionRepo", "Successfully parsed sender's public key")
+
+                        val sharedSecret = computeSharedSecret(senderPublicKey)
+                        Log.d("EncryptionRepo", "Successfully computed shared secret")
+
+                        val decryptedMessage = decryptMessage(encryptedContent, iv, sharedSecret)
+                        Log.d("EncryptionRepo", "Successfully decrypted message: $decryptedMessage")
+
+                        return decryptedMessage
+                } catch (e: Exception) {
+                        Log.e("EncryptionRepo", "Failed to decrypt incoming message", e)
+                        Log.e("EncryptionRepo", "Sender key: $senderPublicKeyBase64")
+                        Log.e("EncryptionRepo", "Encrypted content (Base64): ${Base64.encodeToString(encryptedContent, Base64.NO_WRAP)}")
+                        Log.e("EncryptionRepo", "IV (Base64): ${Base64.encodeToString(iv, Base64.NO_WRAP)}")
+                        throw e
+                }
         }
 }

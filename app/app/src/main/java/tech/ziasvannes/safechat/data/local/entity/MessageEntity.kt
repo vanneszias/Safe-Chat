@@ -31,11 +31,16 @@ data class MessageEntity(
                 Message(
                         id = UUID.fromString(id),
                         content =
-                                if ((decryptedContent == null || decryptedContent.isBlank()) &&
-                                                content.isBlank()
-                                )
-                                        "[Unable to decrypt]"
-                                else (decryptedContent ?: content),
+                                when {
+                                    // If we have decrypted content, use it
+                                    decryptedContent != null && decryptedContent.isNotBlank() -> decryptedContent
+                                    
+                                    // If original content exists (e.g., for outgoing messages), use it
+                                    content.isNotBlank() -> content
+                                    
+                                    // For any message that couldn't be decrypted
+                                    else -> "[🔒 Encrypted message - Unable to decrypt. Sender may not be in your contacts.]"
+                                },
                         timestamp = timestamp,
                         senderId = UUID.fromString(senderId),
                         receiverId = UUID.fromString(receiverId),
@@ -58,7 +63,7 @@ data class MessageEntity(
                 fun fromMessage(message: Message): MessageEntity =
                         MessageEntity(
                                 id = message.id.toString(),
-                                content = message.content,
+                                content = message.content ?: "", // Provide default if domain content is null
                                 timestamp = message.timestamp,
                                 senderId = message.senderId.toString(),
                                 receiverId = message.receiverId.toString(),
@@ -66,7 +71,7 @@ data class MessageEntity(
                                 type = message.type,
                                 encryptedContent = message.encryptedContent,
                                 iv = message.iv,
-                                decryptedContent = message.content
+                                decryptedContent = message.content // Keep nullable for decryptedContent
                         )
         }
 

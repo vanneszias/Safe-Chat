@@ -34,7 +34,6 @@ data class UserResponse(
 )
 
 data class SendMessageRequest(
-        val content: String,
         val receiver_id: String,
         val type: String = "Text", // or "Image", "File"
         val encrypted_content: String, // base64
@@ -43,7 +42,7 @@ data class SendMessageRequest(
 
 data class MessageResponse(
         val id: String,
-        val content: String,
+        val content: String?, // Make content nullable
         val timestamp: Long,
         val sender_id: String,
         val receiver_id: String,
@@ -112,6 +111,15 @@ interface ApiService {
          */
         @GET("/user/{public_key}")
         suspend fun getUserByPublicKey(@Path("public_key") publicKey: String): UserResponse
+
+        /**
+         * Retrieves user information by user ID.
+         *
+         * @param userId The unique identifier of the user to look up.
+         * @return The user's details associated with the provided user ID.
+         */
+        @GET("/user/by-id/{user_id}")
+        suspend fun getUserById(@Path("user_id") userId: String): UserResponse
 
         /**
          * Sends a message to another user.

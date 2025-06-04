@@ -82,7 +82,7 @@ fun MessageBubble(message: Message, isFromCurrentUser: Boolean, modifier: Modifi
             when (message.type) {
                 is MessageType.Text -> {
                     Text(
-                            text = message.content,
+                            text = message.content ?: "", // Display content or empty string if null
                             color = textColor,
                             style = MaterialTheme.typography.bodyMedium
                     )

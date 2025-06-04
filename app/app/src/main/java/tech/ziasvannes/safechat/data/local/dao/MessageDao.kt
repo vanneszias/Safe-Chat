@@ -84,4 +84,12 @@ interface MessageDao {
     """
     )
     fun getChatSessions(): Flow<List<MessageEntity>>
+
+    /**
+     * Returns all messages in the database for cleanup and maintenance operations.
+     *
+     * @return A Flow emitting all message entities in the database.
+     */
+    @Query("SELECT * FROM messages")
+    fun getAllMessages(): Flow<List<MessageEntity>>
 }

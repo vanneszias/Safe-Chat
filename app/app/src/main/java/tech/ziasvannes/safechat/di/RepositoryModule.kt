@@ -32,14 +32,16 @@ object RepositoryModule {
                 encryptionRepository: EncryptionRepository,
                 contactRepository: ContactRepository,
                 userSession: tech.ziasvannes.safechat.session.UserSession,
-                remoteImpl: MessageRepositoryImpl
+                remoteImpl: MessageRepositoryImpl,
+                apiService: tech.ziasvannes.safechat.data.remote.ApiService
         ): MessageRepository =
                 LocalMessageRepositoryImpl(
                         messageDao = db.messageDao(),
                         encryptionRepository = encryptionRepository,
                         contactRepository = contactRepository,
                         userSession = userSession,
-                        remoteRepository = remoteImpl
+                        remoteRepository = remoteImpl,
+                        apiService = apiService
                 )
 
         @Provides

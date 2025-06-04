@@ -8,4 +8,5 @@ sealed class ChatEvent {
     data class InitiateChat(val chatSessionId: UUID) : ChatEvent()
     object RetryEncryption : ChatEvent()
     object ClearError : ChatEvent()
+    object MarkMessagesAsRead : ChatEvent()
 }

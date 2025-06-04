@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import tech.ziasvannes.safechat.data.models.MessageType
+import tech.ziasvannes.safechat.data.repository.LocalMessageRepositoryImpl
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
@@ -63,6 +64,9 @@ constructor(
             ChatEvent.ClearError -> {
                 _state.update { it.copy(error = null) }
             }
+            ChatEvent.MarkMessagesAsRead -> {
+                markMessagesAsRead()
+            }
         }
     }
 
@@ -71,7 +75,9 @@ constructor(
      * state.
      *
      * Updates the state with contact information and continuously collects messages for the given
-     * chat session. If an error occurs, sets a user-friendly error message in the state.
+     * chat session. Implements intelligent loading that prioritizes local data and handles
+     * server sync gracefully to prevent decryption issues with deleted messages.
+     * Also marks received messages as read when the chat is opened.
      *
      * @param chatSessionId The unique identifier of the chat session to load.
      */
@@ -83,26 +89,55 @@ constructor(
                 _state.update {
                     it.copy(contact = contact, contactName = contact?.name ?: "", isLoading = false)
                 }
-                // Start observing messages for the chat session
+                
+                // Start observing messages for the chat session with intelligent loading
                 messageRepository.getMessages(chatSessionId).collect { messages ->
-                    // No need to decrypt here; messages already have decrypted content
+                    // Filter out messages with decryption errors or corrupted data
+                    val validMessages = messages.filter { message ->
+                        val hasDecryptionError = message.content?.startsWith("[🔒 Encrypted message") == true
+                        val hasEmptyContent = message.content.isNullOrBlank()
+                        val isCorrupted = hasDecryptionError || (hasEmptyContent && message.senderId != currentUserId)
+                        
+                        if (isCorrupted) {
+                            Log.w("ChatViewModel", "Filtering out corrupted message ${message.id}")
+                        }
+                        
+                        !isCorrupted
+                    }
+                    
+                    // Check if any messages contain decryption errors
+                    val hasDecryptionErrors = validMessages.any { 
+                        it.content?.startsWith("[🔒 Encrypted message") == true 
+                    }
+                    
+                    // Determine encryption status based on valid messages
+                    val encryptionStatus = if (validMessages.isNotEmpty()) {
+                        tech.ziasvannes.safechat.data.models.EncryptionStatus.ENCRYPTED
+                    } else {
+                        tech.ziasvannes.safechat.data.models.EncryptionStatus.NOT_ENCRYPTED
+                    }
+                    
+                    // Create a user-friendly status message
+                    val statusMessage = when {
+                        hasDecryptionErrors -> "Some messages couldn't be decrypted. This may happen if messages were deleted by the receiver."
+                        encryptionStatus == tech.ziasvannes.safechat.data.models.EncryptionStatus.ENCRYPTED -> 
+                            "Messages are end-to-end encrypted"
+                        else -> "No messages yet"
+                    }
+                    
                     _state.update {
                         it.copy(
-                                messages = messages,
-                                encryptionStatus =
-                                        if (messages.any { it.content.isNotBlank() })
-                                                tech.ziasvannes.safechat.data.models
-                                                        .EncryptionStatus.ENCRYPTED
-                                        else
-                                                tech.ziasvannes.safechat.data.models
-                                                        .EncryptionStatus.NOT_ENCRYPTED
+                                messages = validMessages,
+                                encryptionStatus = encryptionStatus,
+                                hasDecryptionErrors = hasDecryptionErrors,
+                                encryptionStatusMessage = statusMessage
                         )
                     }
                 }
             } catch (e: Exception) {
                 Log.e("ChatViewModel", "Error loading chat", e)
                 _state.update {
-                    it.copy(error = "Failed to load chat. Please try again.", isLoading = false)
+                    it.copy(error = "Failed to load chat. Please check your connection and try again.", isLoading = false)
                 }
             }
         }
@@ -129,7 +164,8 @@ constructor(
                         )
                         .onSuccess {
                             _state.update { it.copy(messageText = "") }
-                            loadChat(contact.id)
+                            // Message will appear through the existing flow collection
+                            // No need to manually refresh here
                         }
                         .onFailure { error -> _state.update { it.copy(error = error.message) } }
             } catch (e: Exception) {
@@ -149,12 +185,60 @@ constructor(
             val currentState = state.value
             val contact = currentState.contact ?: return@launch
 
+            _state.update { it.copy(isLoading = true) }
             try {
                 initiateKeyExchangeUseCase(contact.id)
-                        .onSuccess { _state.update { it.copy(isEncrypted = true) } }
-                        .onFailure { error -> _state.update { it.copy(error = error.message) } }
+                        .onSuccess { 
+                            _state.update { 
+                                it.copy(
+                                    isEncrypted = true, 
+                                    isLoading = false,
+                                    encryptionStatusMessage = "Encryption re-established with ${contact.name}",
+                                    hasDecryptionErrors = false
+                                ) 
+                            }
+                        }
+                        .onFailure { error -> 
+                            _state.update { 
+                                it.copy(
+                                    error = error.message ?: "Failed to establish encryption", 
+                                    isLoading = false,
+                                    encryptionStatusMessage = "Encryption setup failed. Try again."
+                                ) 
+                            }
+                        }
             } catch (e: Exception) {
-                _state.update { it.copy(error = e.message ?: "Failed to establish encryption") }
+                _state.update { 
+                    it.copy(
+                        error = e.message ?: "Failed to establish encryption", 
+                        isLoading = false,
+                        encryptionStatusMessage = "Encryption setup failed. Try again."
+                    ) 
+                }
+            }
+        }
+    }
+
+    /**
+     * Marks received messages as read for the current chat session.
+     * This should be called when the user explicitly views the chat.
+     */
+    private fun markMessagesAsRead() {
+        viewModelScope.launch {
+            val currentState = state.value
+            val contact = currentState.contact ?: return@launch
+
+            try {
+                Log.d("ChatViewModel", "Marking messages as read for contact: ${contact.id}")
+                (messageRepository as? LocalMessageRepositoryImpl)?.markMessagesAsRead(contact.id)
+                
+                // Refresh messages after marking as read
+                loadChat(contact.id)
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Failed to mark messages as read", e)
+                _state.update { 
+                    it.copy(error = "Failed to mark messages as read: ${e.message}")
+                }
             }
         }
     }

@@ -4,7 +4,7 @@ import java.util.UUID
 
 data class Message(
         val id: UUID,
-        val content: String,
+        val content: String?, // Make content nullable
         val timestamp: Long,
         val senderId: UUID,
         val receiverId: UUID,
