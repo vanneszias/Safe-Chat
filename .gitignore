@@ -65,3 +65,7 @@ output.json
 .cxx
 local.properties
 .env
+
+
+# Ignore logs
+./logs/*
