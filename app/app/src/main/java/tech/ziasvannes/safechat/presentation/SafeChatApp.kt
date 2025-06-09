@@ -26,7 +26,7 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  * Composable that defines the main UI and navigation structure for the SafeChat app.
  *
  * Sets up a scaffold with a bottom navigation bar for Chats, Profile, and Settings, which is hidden
- * on chat detail and add contact screens. The main content area displays screens based on
+ * on chat detail, add contact, and auth screens. The main content area displays screens based on
  * navigation state.
  */
 @Composable
@@ -55,6 +55,7 @@ fun SafeChatApp() {
             when {
                 currentDestination?.route?.contains("chat/") == true -> false
                 currentDestination?.route == NavRoutes.ADD_CONTACT -> false
+                currentDestination?.route == NavRoutes.AUTH -> false
                 else -> true
             }
 

@@ -27,7 +27,8 @@ open class ProfileViewModel
 @Inject
 constructor(
         private val apiService: ApiService,
-        private val encryptionRepository: EncryptionRepository
+        private val encryptionRepository: EncryptionRepository,
+        private val userSession: tech.ziasvannes.safechat.session.UserSession
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileState())
@@ -74,6 +75,9 @@ constructor(
             }
             is ProfileEvent.ClearError -> {
                 _state.update { it.copy(error = null) }
+            }
+            is ProfileEvent.Logout -> {
+                logout()
             }
         }
     }
@@ -211,5 +215,12 @@ constructor(
         } catch (e: Exception) {
             null
         }
+    }
+
+    /**
+     * Logs out the current user by clearing the user session data.
+     */
+    private fun logout() {
+        userSession.clearSession()
     }
 }
