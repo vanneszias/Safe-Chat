@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -60,21 +61,15 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  * and generating a new key pair, which invalidates existing encrypted conversations.
  *
  * @param onNavigateBack Callback invoked when the user requests to navigate back.
+ * @param onLogout Callback invoked when the user logs out.
  */
 @OptIn(ExperimentalMaterial3Api::class)
-/**
- * Displays a composable screen for viewing and editing the user's profile, including avatar,
- * username, user ID, and cryptographic keys.
- *
- * Supports toggling between view and edit modes, updating the avatar via camera or gallery, copying
- * the user ID and public key to the clipboard, and generating a new key pair with a warning about
- * invalidating existing encrypted conversations. Handles loading and error states, and provides
- * navigation back via the supplied callback.
- *
- * @param onNavigateBack Invoked when the user requests to navigate back from the profile screen.
- */
 @Composable
-fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(
+    onNavigateBack: () -> Unit, 
+    onLogout: () -> Unit = {},
+    viewModel: ProfileViewModel = hiltViewModel()
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -480,6 +475,44 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Logout section
+            Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors =
+                            CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                            )
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text(
+                            text = "Account",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Logout button
+                    Button(
+                            onClick = { 
+                                viewModel.onEvent(ProfileEvent.Logout)
+                                onLogout()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = MaterialTheme.colorScheme.onError
+                            )
+                    ) {
+                        Icon(imageVector = Icons.Default.ExitToApp, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Logout")
+                    }
+                }
+            }
         }
     }
 }
@@ -532,6 +565,6 @@ fun createImageUri(context: android.content.Context): Uri? {
 fun ProfileScreenPreview() {
     val context = LocalContext.current
     SafeChatTheme {
-        Surface { ProfileScreen(onNavigateBack = {}, viewModel = PreviewProfileViewModel(context)) }
+        Surface { ProfileScreen(onNavigateBack = {}, onLogout = {}, viewModel = PreviewProfileViewModel(context)) }
     }
 }

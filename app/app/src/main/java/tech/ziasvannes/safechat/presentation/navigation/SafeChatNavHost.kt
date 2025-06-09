@@ -2,6 +2,7 @@ package tech.ziasvannes.safechat.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -14,13 +15,16 @@ import tech.ziasvannes.safechat.presentation.screens.contacts.ContactListScreen
 import tech.ziasvannes.safechat.presentation.screens.profile.AuthScreen
 import tech.ziasvannes.safechat.presentation.screens.profile.ProfileScreen
 import tech.ziasvannes.safechat.presentation.screens.settings.SettingsScreen
+import tech.ziasvannes.safechat.session.UserSession
+import javax.inject.Inject
 
 @Composable
 fun SafeChatNavHost(
         navController: NavHostController,
-        startDestination: String = NavRoutes.AUTH,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        userSession: UserSession = hiltViewModel<SessionViewModel>().userSession
 ) {
+    val startDestination = if (userSession.isLoggedIn()) NavRoutes.CONTACTS else NavRoutes.AUTH
     NavHost(
             navController = navController,
             startDestination = startDestination,
@@ -63,7 +67,14 @@ fun SafeChatNavHost(
 
         // Profile screen (for direct navigation from contacts screen only)
         composable(route = NavRoutes.PROFILE) {
-            ProfileScreen(onNavigateBack = { navController.navigateUp() })
+            ProfileScreen(
+                onNavigateBack = { navController.navigateUp() },
+                onLogout = {
+                    navController.navigate(NavRoutes.AUTH) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
 
         // Chat screen

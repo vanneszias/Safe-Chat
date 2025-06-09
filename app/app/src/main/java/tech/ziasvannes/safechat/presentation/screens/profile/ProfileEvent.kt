@@ -31,4 +31,7 @@ sealed class ProfileEvent {
 
     /** Clear any error messages */
     object ClearError : ProfileEvent()
+
+    /** Logout the user */
+    object Logout : ProfileEvent()
 }
