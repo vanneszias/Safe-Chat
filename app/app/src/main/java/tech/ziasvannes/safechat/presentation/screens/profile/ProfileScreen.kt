@@ -1,7 +1,10 @@
 package tech.ziasvannes.safechat.presentation.screens.profile
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentValues
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -30,7 +33,6 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,9 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -66,13 +66,13 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    onNavigateBack: () -> Unit, 
-    onLogout: () -> Unit = {},
-    viewModel: ProfileViewModel = hiltViewModel()
+        onNavigateBack: () -> Unit,
+        onLogout: () -> Unit = {},
+        viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val snackbarHostState = remember { SnackbarHostState() }
 
     // --- Image picker state and launchers ---
@@ -326,13 +326,9 @@ fun ProfileScreen(
                         )
                         IconButton(
                                 onClick = {
-                                    clipboardManager.setText(AnnotatedString(state.userId))
-                                    Toast.makeText(
-                                                    context,
-                                                    "User ID copied to clipboard",
-                                                    Toast.LENGTH_SHORT
-                                            )
-                                            .show()
+                                    clipboard.setPrimaryClip(
+                                            ClipData.newPlainText("ID", formattedUuid)
+                                    )
                                 }
                         ) {
                             Icon(imageVector = Icons.Default.Share, contentDescription = "Copy ID")
@@ -414,16 +410,12 @@ fun ProfileScreen(
                                     Spacer(modifier = Modifier.width(8.dp))
                                     IconButton(
                                             onClick = {
-                                                clipboardManager.setText(
-                                                        AnnotatedString(state.userPublicKey)
-                                                )
-                                                Toast.makeText(
-                                                                context,
-                                                                "Public key copied to clipboard",
-                                                                Toast.LENGTH_SHORT
+                                                clipboard.setPrimaryClip(
+                                                        ClipData.newPlainText(
+                                                                "Public Key",
+                                                                displayKey
                                                         )
-                                                        .show()
-                                                viewModel.onEvent(ProfileEvent.CopyPublicKey)
+                                                )
                                             }
                                     ) {
                                         Icon(
@@ -497,17 +489,21 @@ fun ProfileScreen(
 
                     // Logout button
                     Button(
-                            onClick = { 
+                            onClick = {
                                 viewModel.onEvent(ProfileEvent.Logout)
                                 onLogout()
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error,
-                                    contentColor = MaterialTheme.colorScheme.onError
-                            )
+                            colors =
+                                    ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.error,
+                                            contentColor = MaterialTheme.colorScheme.onError
+                                    )
                     ) {
-                        Icon(imageVector = Icons.Default.ExitToApp, contentDescription = null)
+                        Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                contentDescription = null
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Logout")
                     }
@@ -565,6 +561,12 @@ fun createImageUri(context: android.content.Context): Uri? {
 fun ProfileScreenPreview() {
     val context = LocalContext.current
     SafeChatTheme {
-        Surface { ProfileScreen(onNavigateBack = {}, onLogout = {}, viewModel = PreviewProfileViewModel(context)) }
+        Surface {
+            ProfileScreen(
+                    onNavigateBack = {},
+                    onLogout = {},
+                    viewModel = PreviewProfileViewModel(context)
+            )
+        }
     }
 }

@@ -85,7 +85,9 @@ constructor(
     /**
      * Fetches the user's profile data from the API and updates the UI state.
      *
-     * Initiates an asynchronous request to retrieve the user's ID, username, public key, and avatar (as a base64 string). Updates the state to indicate loading, success, or error based on the outcome.
+     * Initiates an asynchronous request to retrieve the user's ID, username, public key, and avatar
+     * (as a base64 string). Updates the state to indicate loading, success, or error based on the
+     * outcome.
      */
     private fun loadProfile() {
         _state.update { it.copy(isLoading = true) }
@@ -113,7 +115,8 @@ constructor(
     /**
      * Persists the current user's profile changes to the backend and updates the UI state.
      *
-     * Sets a loading state during the operation. On success, disables edit mode; on failure, updates the error message in the state.
+     * Sets a loading state during the operation. On success, disables edit mode; on failure,
+     * updates the error message in the state.
      */
     private fun saveProfile() {
         _state.update { it.copy(isLoading = true) }
@@ -136,7 +139,8 @@ constructor(
     }
 
     /**
-     * Converts the provided image URI to a base64-encoded string and updates the user's avatar in the profile state.
+     * Converts the provided image URI to a base64-encoded string and updates the user's avatar in
+     * the profile state.
      *
      * If encoding fails, updates the state with an error message.
      *
@@ -193,20 +197,24 @@ constructor(
     /**
      * Converts an image at the specified URI to a base64-encoded JPEG string.
      *
-     * Loads the image from the provided URI, compresses it as a JPEG at 90% quality, and encodes the result as a base64 string without line wraps.
+     * Loads the image from the provided URI, compresses it as a JPEG at 90% quality, and encodes
+     * the result as a base64 string without line wraps.
      *
      * @param context Context used to access the content resolver.
      * @param uri URI of the image to convert.
      * @return Base64-encoded JPEG string, or null if the conversion fails.
      */
+    @Suppress("DEPRECATION")
     private fun uriToBase64(context: Context, uri: Uri): String? {
         return try {
             val bitmap =
-                    if (Build.VERSION.SDK_INT < 28) {
-                        MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-                    } else {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        // Use ImageDecoder for API 28+
                         val source = ImageDecoder.createSource(context.contentResolver, uri)
                         ImageDecoder.decodeBitmap(source)
+                    } else {
+                        // Use deprecated method for older versions
+                        MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
                     }
             val outputStream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
@@ -217,9 +225,7 @@ constructor(
         }
     }
 
-    /**
-     * Logs out the current user by clearing the user session data.
-     */
+    /** Logs out the current user by clearing the user session data. */
     private fun logout() {
         userSession.clearSession()
     }

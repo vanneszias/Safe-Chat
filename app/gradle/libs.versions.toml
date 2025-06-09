@@ -14,7 +14,7 @@ espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.9.0"
 lifecycleProcess = "2.9.0"
 activityCompose = "1.10.1"
-composeBom = "2025.05.00"
+composeBom = "2024.04.00"
 desugarJdkLibs = "2.1.5"
 retrofit = "3.0.0"
 retrofitConverterGson = "3.0.0"
@@ -53,6 +53,7 @@ retrofit2-converter-gson = { group = "com.squareup.retrofit2", name = "converter
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 bouncycastle = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
 security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 
 [plugins]
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

@@ -41,7 +41,7 @@ android {
 
     buildFeatures { compose = true }
 
-    composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
+    composeOptions { kotlinCompilerExtensionVersion = "1.6.6" }
 
     packaging {
         resources {
@@ -81,6 +81,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.icons.extended)
+    implementation(libs.androidx.compose.foundation)
 
     // Misc
     implementation(libs.gson)
@@ -107,3 +108,4 @@ dependencies {
     // AndroidX Security Crypto
     implementation(libs.security.crypto)
 }
+

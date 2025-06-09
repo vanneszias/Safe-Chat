@@ -1,5 +1,4 @@
 package tech.ziasvannes.safechat.di
-
 import android.content.Context
 import androidx.room.Room
 import dagger.Module
@@ -18,7 +17,6 @@ import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-
         /**
          * Provides a singleton instance of the SafeChat Room database.
          *
@@ -34,8 +32,8 @@ object DatabaseModule {
         // Room migration for adding decryptedContent to messages
         val MIGRATION_2_3 =
                 object : androidx.room.migration.Migration(2, 3) {
-                        override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
-                                database.execSQL(
+                        override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                                db.execSQL(
                                         "ALTER TABLE messages ADD COLUMN decryptedContent TEXT"
                                 )
                         }
