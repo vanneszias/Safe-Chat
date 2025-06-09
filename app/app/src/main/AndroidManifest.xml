@@ -27,7 +27,8 @@
             android:name="tech.ziasvannes.safechat.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.SafeChat">
+            android:theme="@style/Theme.SafeChat"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

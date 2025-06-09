@@ -39,7 +39,7 @@ import tech.ziasvannes.safechat.presentation.components.MessageBubble
  * @param modifier Optional modifier for styling
  * @param viewModel The view model responsible for chat state and logic
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 /**
  * Composes the main chat screen UI for a given chat session.
  *
@@ -60,32 +60,34 @@ fun ChatScreen(
     val state by viewModel.state.collectAsState()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-
+    val isKeyboardOpen = WindowInsets.isImeVisible
     // If chatSessionId is provided, load messages and contact for that chat session
     LaunchedEffect(chatSessionId) { chatSessionId?.let { viewModel.loadChat(it) } }
 
-    // Initial scroll to bottom when chat is first loaded
-    LaunchedEffect(state.messages.isNotEmpty(), state.isLoading) {
-        if (state.messages.isNotEmpty() && !state.isLoading) {
-            coroutineScope.launch { listState.scrollToItem(state.messages.size - 1) }
-        }
-    }
-
-    // Auto-scroll to the latest message when new messages arrive, but only if user is near bottom
-    LaunchedEffect(state.messages.size) {
+    // Unified scroll logic:
+    // Always scroll to the bottom if the keyboard is open.
+    // If the keyboard is closed, auto-scroll to the latest message only if
+    // the user is near the bottom or it's the first message.
+    LaunchedEffect(isKeyboardOpen, state.messages.size) {
         if (state.messages.isNotEmpty()) {
             coroutineScope.launch {
-                val lastVisibleIndex =
-                        listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                val totalItems = state.messages.size
-                val isNearBottom =
-                        totalItems - lastVisibleIndex <= 3 // User is within 3 messages of bottom
-
-                if (isNearBottom || lastVisibleIndex == 0
-                ) { // Always scroll on first message or when near bottom
-                    listState.animateScrollToItem(
-                            totalItems - 1
-                    ) // Scroll to the last item (latest message)
+                if (isKeyboardOpen) {
+                    // If keyboard is open, always scroll to the very last message immediately
+                    listState.scrollToItem(state.messages.size - 1)
+                } else {
+                    // If keyboard is closed, use the smart auto-scroll logic
+                    val lastVisibleIndex =
+                            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                    val totalItems = state.messages.size
+                    val isNearBottom =
+                            totalItems - lastVisibleIndex <=
+                                    3 // User is within 3 messages of bottom
+                    if (isNearBottom || lastVisibleIndex == 0
+                    ) { // Always scroll on first message or when near bottom
+                        listState.animateScrollToItem(
+                                totalItems - 1
+                        ) // Scroll to the last item (latest message)
+                    }
                 }
             }
         }
@@ -137,6 +139,7 @@ fun ChatScreen(
         Box(
                 modifier =
                         Modifier.fillMaxSize()
+                                .padding(paddingValues)
                                 .background(
                                         Brush.verticalGradient(
                                                 colors =
@@ -149,10 +152,7 @@ fun ChatScreen(
                                         )
                                 )
         ) {
-            Column(
-                    modifier = Modifier.fillMaxSize().padding(paddingValues),
-                    verticalArrangement = Arrangement.SpaceBetween
-            ) {
+            Column(modifier = Modifier.fillMaxSize().imePadding()) {
                 // Show retry encryption button if there are decryption errors
                 if (state.hasDecryptionErrors) {
                     Card(
@@ -210,7 +210,14 @@ fun ChatScreen(
                         onSendClick = {
                             viewModel.onEvent(ChatEvent.SendMessage(state.messageText))
                         },
-                        modifier = Modifier.fillMaxWidth().padding(16.dp)
+                        modifier =
+                                Modifier.fillMaxWidth()
+                                        .padding(
+                                                start = 16.dp,
+                                                end = 16.dp,
+                                                top = 8.dp,
+                                                bottom = 0.dp
+                                        )
                 )
             }
         }
