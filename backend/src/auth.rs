@@ -21,6 +21,15 @@ use sqlx::types::Uuid;
 use std::sync::Arc;
 use tracing::info;
 
+pub fn decode_jwt_token(token: &str, secret: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+    decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &Validation::default(),
+    )
+    .map(|data| data.claims)
+}
+
 #[derive(Deserialize)]
 pub struct RegisterRequest {
     pub username: String,
@@ -34,9 +43,9 @@ pub struct LoginRequest {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Claims {
-    sub: Uuid,
-    exp: usize,
+pub struct Claims {
+    pub sub: Uuid,
+    pub exp: usize,
 }
 
 #[derive(Serialize)]

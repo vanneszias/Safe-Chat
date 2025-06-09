@@ -120,3 +120,108 @@
 - Method: GET
 - Returns: Simple HTML page displaying the database contents in a table, fetched from /admin/dbdump.
 - Auth: None (for demo/admin use only)
+
+---
+
+## WebSocket
+
+### Real-time Messaging Connection
+
+- **WS** `/ws?token={jwt_token}`
+- **Query Parameters:**
+  - `token`: JWT authentication token
+- **Description:**
+  - Establishes a WebSocket connection for real-time messaging
+  - Automatically broadcasts new messages to recipients
+  - Sends status updates when messages are read/delivered
+  - Provides user online/offline notifications
+- **Connection Events:**
+  - **Connected**: Connection established successfully
+  - **Disconnected**: Connection closed
+  - **Error**: Connection or authentication error
+
+### WebSocket Message Types
+
+#### Incoming Messages (Server → Client)
+
+- **new_message**: New message received
+  ```json
+  {
+    "message_type": "new_message",
+    "data": {
+      "id": "uuid-string",
+      "timestamp": "timestamp-string",
+      "sender_id": "uuid-string",
+      "receiver_id": "uuid-string",
+      "status": "SENT",
+      "type": "Text",
+      "encrypted_content": "base64-string",
+      "iv": "base64-string"
+    }
+  }
+  ```
+
+- **status_update**: Message status changed
+  ```json
+  {
+    "message_type": "status_update",
+    "data": {
+      "message_id": "uuid-string",
+      "status": "READ|DELIVERED|FAILED",
+      "updated_by": "uuid-string"
+    }
+  }
+  ```
+
+- **user_online**: User came online
+  ```json
+  {
+    "message_type": "user_online",
+    "data": {
+      "user_id": "uuid-string"
+    }
+  }
+  ```
+
+- **user_offline**: User went offline
+  ```json
+  {
+    "message_type": "user_offline",
+    "data": {
+      "user_id": "uuid-string"
+    }
+  }
+  ```
+
+#### Outgoing Messages (Client → Server)
+
+- **ping**: Keep connection alive
+  ```json
+  {
+    "message_type": "ping",
+    "data": {}
+  }
+  ```
+
+- **mark_typing**: Indicate typing status
+  ```json
+  {
+    "message_type": "mark_typing",
+    "data": {
+      "recipient_id": "uuid-string"
+    }
+  }
+  ```
+
+### WebSocket Authentication
+
+- JWT token must be provided as a query parameter
+- Invalid or missing tokens result in connection rejection with 401 Unauthorized
+- Token validation occurs during connection establishment
+
+### Connection Management
+
+- Automatic reconnection handling on client side
+- Heartbeat/ping messages to maintain connection
+- Graceful disconnection on user logout
+- Broadcast to all connected users for status updates

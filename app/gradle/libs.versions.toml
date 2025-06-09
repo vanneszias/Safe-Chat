@@ -21,6 +21,7 @@ retrofitConverterGson = "3.0.0"
 coil = "2.7.0"
 bouncycastle = "1.80"
 securityCrypto = "1.1.0-alpha06"
+okhttp = "4.12.0"
 
 [libraries]
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
@@ -54,6 +55,8 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 bouncycastle = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
 security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-ws = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 
 [plugins]
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

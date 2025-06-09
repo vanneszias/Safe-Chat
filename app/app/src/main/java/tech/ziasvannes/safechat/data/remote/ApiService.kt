@@ -33,12 +33,7 @@ data class UserResponse(
         val avatar: String? = null
 )
 
-data class SendMessageRequest(
-        val receiver_id: String,
-        val type: String = "Text", // or "Image", "File"
-        val encrypted_content: String, // base64
-        val iv: String // base64
-)
+
 
 data class MessageResponse(
         val id: String,
@@ -52,9 +47,7 @@ data class MessageResponse(
         val iv: String // base64
 )
 
-data class UpdateMessageStatusRequest(
-        val status: String // "SENT", "DELIVERED", "READ", "FAILED"
-)
+
 
 interface ApiService {
         /**
@@ -121,15 +114,7 @@ interface ApiService {
         @GET("/user/by-id/{user_id}")
         suspend fun getUserById(@Path("user_id") userId: String): UserResponse
 
-        /**
-         * Sends a message to another user.
-         *
-         * @param request The message details, including content, recipient, type, and encrypted
-         * payload.
-         * @return The details of the sent message as returned by the server.
-         */
-        @POST("/messages")
-        suspend fun sendMessage(@Body request: SendMessageRequest): MessageResponse
+
 
         /**
          * Retrieves the list of messages exchanged with the specified user.
@@ -143,17 +128,7 @@ interface ApiService {
                 @retrofit2.http.Path("user_id") userId: String
         ): List<MessageResponse>
 
-        /**
-         * Updates the status of a specific message.
-         *
-         * @param messageId The unique identifier of the message to update.
-         * @param request The new status for the message.
-         */
-        @PUT("/messages/{message_id}/status")
-        suspend fun updateMessageStatus(
-                @retrofit2.http.Path("message_id") messageId: String,
-                @Body request: UpdateMessageStatusRequest
-        )
+
 }
 
 // Authenticated requests will have the Authorization header added by an OkHttp interceptor
