@@ -19,7 +19,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.extended.*
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -53,554 +63,425 @@ import tech.ziasvannes.safechat.presentation.theme.SafeChatTheme
  */
 @OptIn(ExperimentalMaterial3Api::class)
 /**
- * Displays a composable screen for viewing and editing the user's profile, including avatar, username, user ID, and cryptographic keys.
+ * Displays a composable screen for viewing and editing the user's profile, including avatar,
+ * username, user ID, and cryptographic keys.
  *
- * Supports toggling between view and edit modes, updating the avatar via camera or gallery, copying the user ID and public key to the clipboard, and generating a new key pair with a warning about invalidating existing encrypted conversations. Handles loading and error states, and provides navigation back via the supplied callback.
+ * Supports toggling between view and edit modes, updating the avatar via camera or gallery, copying
+ * the user ID and public key to the clipboard, and generating a new key pair with a warning about
+ * invalidating existing encrypted conversations. Handles loading and error states, and provides
+ * navigation back via the supplied callback.
  *
  * @param onNavigateBack Invoked when the user requests to navigate back from the profile screen.
  */
 @Composable
 fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
-        val state by viewModel.state.collectAsStateWithLifecycle()
-        val context = LocalContext.current
-        val clipboardManager = LocalClipboardManager.current
-        val snackbarHostState = remember { SnackbarHostState() }
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
-        // --- Image picker state and launchers ---
-        var showImagePickerDialog by remember { mutableStateOf(false) }
-        var tempCameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    // --- Image picker state and launchers ---
+    var showImagePickerDialog by remember { mutableStateOf(false) }
+    var tempCameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
 
-        // Camera launcher
-        val cameraLauncher =
-                rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success
-                        ->
-                        if (success && tempCameraUri != null) {
-                                viewModel.onEvent(
-                                        ProfileEvent.OnAvatarSelected(context, tempCameraUri!!)
-                                )
-                        }
+    // Camera launcher
+    val cameraLauncher =
+            rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+                if (success && tempCameraUri != null) {
+                    viewModel.onEvent(ProfileEvent.OnAvatarSelected(context, tempCameraUri!!))
                 }
-        // Gallery launcher
-        val galleryLauncher =
-                rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-                        uri?.let { viewModel.onEvent(ProfileEvent.OnAvatarSelected(context, it)) }
-                }
+            }
+    // Gallery launcher
+    val galleryLauncher =
+            rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+                uri?.let { viewModel.onEvent(ProfileEvent.OnAvatarSelected(context, it)) }
+            }
 
-        // Permission launcher (for camera)
-        val cameraPermissionLauncher =
-                rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-                        granted ->
-                        if (granted) {
-                                val uri = createImageUri(context)
-                                if (uri != null) {
-                                        tempCameraUri = uri
-                                        cameraLauncher.launch(uri)
-                                }
-                        } else {
-                                Toast.makeText(
-                                                context,
-                                                "Camera permission denied",
-                                                Toast.LENGTH_SHORT
-                                        )
-                                        .show()
-                        }
+    // Permission launcher (for camera)
+    val cameraPermissionLauncher =
+            rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted
+                ->
+                if (granted) {
+                    val uri = createImageUri(context)
+                    if (uri != null) {
+                        tempCameraUri = uri
+                        cameraLauncher.launch(uri)
+                    }
+                } else {
+                    Toast.makeText(context, "Camera permission denied", Toast.LENGTH_SHORT).show()
                 }
+            }
 
-        // Show error snackbar if there's an error
-        LaunchedEffect(state.error) {
-                state.error?.let {
-                        val result =
-                                snackbarHostState.showSnackbar(
-                                        message = it,
-                                        actionLabel = "Dismiss",
-                                        duration = SnackbarDuration.Short
-                                )
-                        if (result == SnackbarResult.ActionPerformed ||
-                                        result == SnackbarResult.Dismissed
-                        ) {
-                                viewModel.onEvent(ProfileEvent.ClearError)
-                        }
-                }
+    // Show error snackbar if there's an error
+    LaunchedEffect(state.error) {
+        state.error?.let {
+            val result =
+                    snackbarHostState.showSnackbar(
+                            message = it,
+                            actionLabel = "Dismiss",
+                            duration = SnackbarDuration.Short
+                    )
+            if (result == SnackbarResult.ActionPerformed || result == SnackbarResult.Dismissed) {
+                viewModel.onEvent(ProfileEvent.ClearError)
+            }
         }
+    }
 
-        // Display loading dialog when needed
-        LoadingDialog(isLoading = state.isLoading, message = "Updating profile...")
+    // Display loading dialog when needed
+    LoadingDialog(isLoading = state.isLoading, message = "Updating profile...")
 
-        Scaffold(
-                topBar = {
-                        TopAppBar(
-                                title = { Text("My Profile") },
-                                navigationIcon = {
-                                        IconButton(onClick = onNavigateBack) {
-                                                Icon(
-                                                        imageVector = Icons.Default.ArrowBack,
-                                                        contentDescription = "Navigate back"
-                                                )
-                                        }
-                                },
-                                actions = {
-                                        if (state.isEditMode) {
-                                                IconButton(
-                                                        onClick = {
-                                                                viewModel.onEvent(
-                                                                        ProfileEvent.SaveProfile
-                                                                )
-                                                        }
-                                                ) {
-                                                        Icon(
-                                                                imageVector =
-                                                                        Icons.Default
-                                                                                .Clear, // TODO Save
-                                                                contentDescription = "Save profile"
-                                                        )
-                                                }
-                                        } else {
-                                                IconButton(
-                                                        onClick = {
-                                                                viewModel.onEvent(
-                                                                        ProfileEvent.ToggleEditMode
-                                                                )
-                                                        }
-                                                ) {
-                                                        Icon(
-                                                                imageVector = Icons.Default.Edit,
-                                                                contentDescription = "Edit profile"
-                                                        )
-                                                }
-                                        }
+    Scaffold(
+            topBar = {
+                TopAppBar(
+                        title = { Text("My Profile") },
+                        navigationIcon = {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Navigate back"
+                                )
+                            }
+                        },
+                        actions = {
+                            if (state.isEditMode) {
+                                IconButton(
+                                        onClick = { viewModel.onEvent(ProfileEvent.SaveProfile) }
+                                ) {
+                                    Icon(
+                                            imageVector = Icons.Default.Done,
+                                            contentDescription = "Save profile"
+                                    )
                                 }
+                            } else {
+                                IconButton(
+                                        onClick = { viewModel.onEvent(ProfileEvent.ToggleEditMode) }
+                                ) {
+                                    Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Edit profile"
+                                    )
+                                }
+                            }
+                        }
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        Column(
+                modifier =
+                        Modifier.fillMaxSize()
+                                .padding(paddingValues)
+                                .verticalScroll(rememberScrollState())
+                                .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Profile avatar
+            Box(
+                    modifier =
+                            Modifier.size(120.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                                    .clickable(enabled = state.isEditMode) {
+                                        showImagePickerDialog = true
+                                    },
+                    contentAlignment = Alignment.Center
+            ) {
+                if (!state.avatar.isNullOrBlank()) {
+                    val imageBitmap =
+                            remember(state.avatar) {
+                                try {
+                                    val decodedBytes = Base64.decode(state.avatar, Base64.DEFAULT)
+                                    BitmapFactory.decodeByteArray(
+                                                    decodedBytes,
+                                                    0,
+                                                    decodedBytes.size
+                                            )
+                                            ?.asImageBitmap()
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                    if (imageBitmap != null) {
+                        Image(
+                                bitmap = imageBitmap,
+                                contentDescription = "Profile avatar",
+                                modifier = Modifier.size(120.dp).clip(CircleShape)
                         )
-                },
-                snackbarHost = { SnackbarHost(snackbarHostState) }
-        ) { paddingValues ->
-                Column(
-                        modifier =
-                                Modifier.fillMaxSize()
-                                        .padding(paddingValues)
-                                        .verticalScroll(rememberScrollState())
-                                        .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                        // Profile avatar
-                        Box(
-                                modifier =
-                                        Modifier.size(120.dp)
-                                                .clip(CircleShape)
-                                                .background(
-                                                        MaterialTheme.colorScheme.surfaceVariant
-                                                )
-                                                .border(
-                                                        2.dp,
-                                                        MaterialTheme.colorScheme.primary,
-                                                        CircleShape
-                                                )
-                                                .clickable(enabled = state.isEditMode) {
-                                                        showImagePickerDialog = true
-                                                },
-                                contentAlignment = Alignment.Center
-                        ) {
-                                if (!state.avatar.isNullOrBlank()) {
-                                        val imageBitmap =
-                                                remember(state.avatar) {
-                                                        try {
-                                                                val decodedBytes =
-                                                                        Base64.decode(
-                                                                                state.avatar,
-                                                                                Base64.DEFAULT
-                                                                        )
-                                                                BitmapFactory.decodeByteArray(
-                                                                                decodedBytes,
-                                                                                0,
-                                                                                decodedBytes.size
-                                                                        )
-                                                                        ?.asImageBitmap()
-                                                        } catch (e: Exception) {
-                                                                null
-                                                        }
-                                                }
-                                        if (imageBitmap != null) {
-                                                Image(
-                                                        bitmap = imageBitmap,
-                                                        contentDescription = "Profile avatar",
-                                                        modifier =
-                                                                Modifier.size(120.dp)
-                                                                        .clip(CircleShape)
-                                                )
-                                        } else {
-                                                Icon(
-                                                        imageVector = Icons.Default.Person,
-                                                        contentDescription = "Profile avatar",
-                                                        tint =
-                                                                MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant,
-                                                        modifier = Modifier.size(64.dp)
-                                                )
-                                        }
-                                } else {
-                                        Icon(
-                                                imageVector = Icons.Default.Person,
-                                                contentDescription = "Profile avatar",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(64.dp)
-                                        )
-                                }
-
-                                // Edit badge (when in edit mode)
-                                if (state.isEditMode) {
-                                        Box(
-                                                modifier =
-                                                        Modifier.align(Alignment.BottomEnd)
-                                                                .size(36.dp)
-                                                                .clip(CircleShape)
-                                                                .background(
-                                                                        MaterialTheme.colorScheme
-                                                                                .primary
-                                                                )
-                                                                .padding(8.dp),
-                                                contentAlignment = Alignment.Center
-                                        ) {
-                                                Icon(
-                                                        imageVector = Icons.Default.Edit,
-                                                        contentDescription = "Edit avatar",
-                                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                                        modifier = Modifier.size(20.dp)
-                                                )
-                                        }
-                                }
-                        }
-
-                        // --- Image Picker Dialog ---
-                        if (showImagePickerDialog) {
-                                AlertDialog(
-                                        onDismissRequest = { showImagePickerDialog = false },
-                                        title = { Text("Change Profile Picture") },
-                                        text = {
-                                                Text("Choose a method to set your profile picture.")
-                                        },
-                                        confirmButton = {
-                                                Column {
-                                                        Button(
-                                                                onClick = {
-                                                                        showImagePickerDialog =
-                                                                                false
-                                                                        val cameraPermission =
-                                                                                Manifest.permission
-                                                                                        .CAMERA
-                                                                        if (ContextCompat
-                                                                                        .checkSelfPermission(
-                                                                                                context,
-                                                                                                cameraPermission
-                                                                                        ) ==
-                                                                                        PackageManager
-                                                                                                .PERMISSION_GRANTED
-                                                                        ) {
-                                                                                val uri =
-                                                                                        createImageUri(
-                                                                                                context
-                                                                                        )
-                                                                                if (uri != null) {
-                                                                                        tempCameraUri =
-                                                                                                uri
-                                                                                        cameraLauncher
-                                                                                                .launch(
-                                                                                                        uri
-                                                                                                )
-                                                                                }
-                                                                        } else {
-                                                                                cameraPermissionLauncher
-                                                                                        .launch(
-                                                                                                cameraPermission
-                                                                                        )
-                                                                        }
-                                                                }
-                                                        ) {
-                                                                Icon(
-                                                                        Icons.Default
-                                                                                .Favorite, // TODO
-                                                                        // PhotoCamera
-                                                                        contentDescription = null
-                                                                )
-                                                                Spacer(Modifier.width(8.dp))
-                                                                Text("Take Photo")
-                                                        }
-                                                        Spacer(Modifier.height(8.dp))
-                                                        Button(
-                                                                onClick = {
-                                                                        showImagePickerDialog =
-                                                                                false
-                                                                        galleryLauncher.launch(
-                                                                                "image/*"
-                                                                        )
-                                                                }
-                                                        ) {
-                                                                Icon(
-                                                                        Icons.Default
-                                                                                .Favorite, // TODO
-                                                                        // PhotoLibrary
-                                                                        contentDescription = null
-                                                                )
-                                                                Spacer(Modifier.width(8.dp))
-                                                                Text("Choose from Gallery")
-                                                        }
-                                                }
-                                        },
-                                        dismissButton = {
-                                                TextButton(
-                                                        onClick = { showImagePickerDialog = false }
-                                                ) { Text("Cancel") }
-                                        }
-                                )
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // Username
-                        if (state.isEditMode) {
-                                CustomTextField(
-                                        value = state.userName,
-                                        onValueChange = {
-                                                viewModel.onEvent(
-                                                        ProfileEvent.OnUserNameChanged(it)
-                                                )
-                                        },
-                                        label = "Name",
-                                        modifier = Modifier.fillMaxWidth()
-                                )
-                        } else {
-                                Text(
-                                        text = state.userName,
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                if (state.userId.isNotBlank()) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                                val formattedUuid = formatUuid(state.userId)
-                                                Text(
-                                                        text = "ID: $formattedUuid",
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        color =
-                                                                MaterialTheme.colorScheme
-                                                                        .onSurfaceVariant
-                                                )
-                                                IconButton(
-                                                        onClick = {
-                                                                clipboardManager.setText(
-                                                                        AnnotatedString(
-                                                                                state.userId
-                                                                        )
-                                                                )
-                                                                Toast.makeText(
-                                                                                context,
-                                                                                "User ID copied to clipboard",
-                                                                                Toast.LENGTH_SHORT
-                                                                        )
-                                                                        .show()
-                                                        }
-                                                ) {
-                                                        Icon(
-                                                                Icons.Default.Favorite,
-                                                                contentDescription = "Copy ID"
-                                                        )
-                                                }
-                                        }
-                                }
-                        }
-
-                        Spacer(modifier = Modifier.height(32.dp))
-
-                        // Security section
-                        Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors =
-                                        CardDefaults.cardColors(
-                                                containerColor = MaterialTheme.colorScheme.surface
-                                        )
-                        ) {
-                                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                                        // Section title
-                                        Text(
-                                                text = "Security",
-                                                style = MaterialTheme.typography.titleLarge,
-                                                fontWeight = FontWeight.Bold
-                                        )
-
-                                        Spacer(modifier = Modifier.height(16.dp))
-
-                                        // Public key info
-                                        Column(modifier = Modifier.fillMaxWidth()) {
-                                                Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement =
-                                                                Arrangement.SpaceBetween,
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        Text(
-                                                                text = "Your Public Key",
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .titleMedium
-                                                        )
-
-                                                        IconButton(
-                                                                onClick = {
-                                                                        viewModel.onEvent(
-                                                                                ProfileEvent
-                                                                                        .ToggleKeyVisibility
-                                                                        )
-                                                                }
-                                                        ) {
-                                                                Icon(
-                                                                        imageVector =
-                                                                                if (state.isKeyVisible
-                                                                                )
-                                                                                        Icons.Default
-                                                                                                .FavoriteBorder
-                                                                                else
-                                                                                        Icons.Default
-                                                                                                .Favorite, // TODO VisibilityOff,
-                                                                        // Visibility
-                                                                        contentDescription =
-                                                                                if (state.isKeyVisible
-                                                                                )
-                                                                                        "Hide key"
-                                                                                else "Show key"
-                                                                )
-                                                        }
-                                                }
-
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                // Public key display
-                                                if (state.isKeyVisible) {
-                                                        val displayKey =
-                                                                state.userPublicKey
-                                                                        .replace("/", "")
-                                                                        .chunked(4)
-                                                                        .joinToString("-")
-                                                        Surface(
-                                                                modifier =
-                                                                        Modifier.fillMaxWidth()
-                                                                                .padding(
-                                                                                        vertical =
-                                                                                                8.dp
-                                                                                ),
-                                                                shape = MaterialTheme.shapes.medium,
-                                                                color =
-                                                                        MaterialTheme.colorScheme
-                                                                                .surfaceVariant
-                                                        ) {
-                                                                Row(
-                                                                        modifier =
-                                                                                Modifier.fillMaxWidth()
-                                                                                        .padding(
-                                                                                                16.dp
-                                                                                        ),
-                                                                        verticalAlignment =
-                                                                                Alignment
-                                                                                        .CenterVertically
-                                                                ) {
-                                                                        Text(
-                                                                                text = displayKey,
-                                                                                style =
-                                                                                        MaterialTheme
-                                                                                                .typography
-                                                                                                .bodyMedium,
-                                                                                modifier =
-                                                                                        Modifier.weight(
-                                                                                                1f
-                                                                                        )
-                                                                        )
-                                                                        Spacer(
-                                                                                modifier =
-                                                                                        Modifier.width(
-                                                                                                8.dp
-                                                                                        )
-                                                                        )
-                                                                        IconButton(
-                                                                                onClick = {
-                                                                                        clipboardManager
-                                                                                                .setText(
-                                                                                                        AnnotatedString(
-                                                                                                                state.userPublicKey
-                                                                                                        )
-                                                                                                )
-                                                                                        Toast.makeText(
-                                                                                                        context,
-                                                                                                        "Public key copied to clipboard",
-                                                                                                        Toast.LENGTH_SHORT
-                                                                                                )
-                                                                                                .show()
-                                                                                        viewModel
-                                                                                                .onEvent(
-                                                                                                        ProfileEvent
-                                                                                                                .CopyPublicKey
-                                                                                                )
-                                                                                }
-                                                                        ) {
-                                                                                Icon(
-                                                                                        imageVector =
-                                                                                                Icons.Default
-                                                                                                        .FavoriteBorder, // TODO ContentCopy
-                                                                                        contentDescription =
-                                                                                                "Copy public key"
-                                                                                )
-                                                                        }
-                                                                }
-                                                        }
-                                                } else {
-                                                        Text(
-                                                                text = "••••••••••••••••••••••",
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .bodyMedium
-                                                        )
-                                                }
-
-                                                Spacer(modifier = Modifier.height(16.dp))
-
-                                                // Generate new key pair button
-                                                Button(
-                                                        onClick = {
-                                                                // Show confirmation dialog before
-                                                                // generating new keys
-                                                                // For now, just generate directly
-                                                                viewModel.onEvent(
-                                                                        ProfileEvent
-                                                                                .GenerateNewKeyPair
-                                                                )
-                                                                Toast.makeText(
-                                                                                context,
-                                                                                "New key pair generated",
-                                                                                Toast.LENGTH_SHORT
-                                                                        )
-                                                                        .show()
-                                                        },
-                                                        modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                        Icon(
-                                                                imageVector = Icons.Default.Refresh,
-                                                                contentDescription = null
-                                                        )
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Text("Generate New Key Pair")
-                                                }
-
-                                                Spacer(modifier = Modifier.height(8.dp))
-
-                                                // Warning about generating new keys
-                                                Text(
-                                                        text =
-                                                                "Warning: Generating a new key pair will invalidate all existing encrypted conversations.",
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.error
-                                                )
-                                        }
-                                }
-                        }
+                    } else {
+                        Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Profile avatar",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(64.dp)
+                        )
+                    }
+                } else {
+                    Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Profile avatar",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(64.dp)
+                    )
                 }
+
+                // Edit badge (when in edit mode)
+                if (state.isEditMode) {
+                    Box(
+                            modifier =
+                                    Modifier.align(Alignment.BottomEnd)
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primary)
+                                            .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit avatar",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
+            // --- Image Picker Dialog ---
+            if (showImagePickerDialog) {
+                AlertDialog(
+                        onDismissRequest = { showImagePickerDialog = false },
+                        title = { Text("Change Profile Picture") },
+                        text = { Text("Choose a method to set your profile picture.") },
+                        confirmButton = {
+                            Column {
+                                Button(
+                                        onClick = {
+                                            showImagePickerDialog = false
+                                            val cameraPermission = Manifest.permission.CAMERA
+                                            if (ContextCompat.checkSelfPermission(
+                                                            context,
+                                                            cameraPermission
+                                                    ) == PackageManager.PERMISSION_GRANTED
+                                            ) {
+                                                val uri = createImageUri(context)
+                                                if (uri != null) {
+                                                    tempCameraUri = uri
+                                                    cameraLauncher.launch(uri)
+                                                }
+                                            } else {
+                                                cameraPermissionLauncher.launch(cameraPermission)
+                                            }
+                                        }
+                                ) {
+                                    Icon(
+                                            imageVector = Icons.Default.PhotoCamera,
+                                            contentDescription = null
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Take Photo")
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                Button(
+                                        onClick = {
+                                            showImagePickerDialog = false
+                                            galleryLauncher.launch("image/*")
+                                        }
+                                ) {
+                                    Icon(
+                                            imageVector = Icons.Default.PhotoLibrary,
+                                            contentDescription = null
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Choose from Gallery")
+                                }
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showImagePickerDialog = false }) {
+                                Text("Cancel")
+                            }
+                        }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Username
+            if (state.isEditMode) {
+                CustomTextField(
+                        value = state.userName,
+                        onValueChange = { viewModel.onEvent(ProfileEvent.OnUserNameChanged(it)) },
+                        label = "Name",
+                        modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                Text(
+                        text = state.userName,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                if (state.userId.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val formattedUuid = formatUuid(state.userId)
+                        Text(
+                                text = "ID: $formattedUuid",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        IconButton(
+                                onClick = {
+                                    clipboardManager.setText(AnnotatedString(state.userId))
+                                    Toast.makeText(
+                                                    context,
+                                                    "User ID copied to clipboard",
+                                                    Toast.LENGTH_SHORT
+                                            )
+                                            .show()
+                                }
+                        ) {
+                            Icon(imageVector = Icons.Default.Share, contentDescription = "Copy ID")
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Security section
+            Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors =
+                            CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                            )
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    // Section title
+                    Text(
+                            text = "Security",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Public key info
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                    text = "Your Public Key",
+                                    style = MaterialTheme.typography.titleMedium
+                            )
+
+                            IconButton(
+                                    onClick = {
+                                        viewModel.onEvent(ProfileEvent.ToggleKeyVisibility)
+                                    }
+                            ) {
+                                Icon(
+                                        imageVector =
+                                                if (state.isKeyVisible) Icons.Default.Close
+                                                else Icons.Default.Info,
+                                        contentDescription =
+                                                if (state.isKeyVisible) "Hide key" else "Show key"
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Public key display
+                        if (state.isKeyVisible) {
+                            val displayKey =
+                                    state.userPublicKey
+                                            .replace("/", "")
+                                            .chunked(4)
+                                            .joinToString("-")
+                            Surface(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                    shape = MaterialTheme.shapes.medium,
+                                    color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Row(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                            text = displayKey,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.weight(1f)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(
+                                            onClick = {
+                                                clipboardManager.setText(
+                                                        AnnotatedString(state.userPublicKey)
+                                                )
+                                                Toast.makeText(
+                                                                context,
+                                                                "Public key copied to clipboard",
+                                                                Toast.LENGTH_SHORT
+                                                        )
+                                                        .show()
+                                                viewModel.onEvent(ProfileEvent.CopyPublicKey)
+                                            }
+                                    ) {
+                                        Icon(
+                                                imageVector = Icons.Default.Share,
+                                                contentDescription = "Copy public key"
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Text(
+                                    text = "••••••••••••••••••••••",
+                                    style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Generate new key pair button
+                        Button(
+                                onClick = {
+                                    // Show confirmation dialog before
+                                    // generating new keys
+                                    // For now, just generate directly
+                                    viewModel.onEvent(ProfileEvent.GenerateNewKeyPair)
+                                    Toast.makeText(
+                                                    context,
+                                                    "New key pair generated",
+                                                    Toast.LENGTH_SHORT
+                                            )
+                                            .show()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Generate New Key Pair")
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Warning about generating new keys
+                        Text(
+                                text =
+                                        "Warning: Generating a new key pair will invalidate all existing encrypted conversations.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
         }
+    }
 }
 
 /**
@@ -614,10 +495,10 @@ fun ProfileScreen(onNavigateBack: () -> Unit, viewModel: ProfileViewModel = hilt
  * @return The formatted UUID string, or the original input if formatting is not possible.
  */
 fun formatUuid(uuid: String): String {
-        val clean = uuid.replace("-", "")
-        return if (clean.length == 32) {
-                "${clean.substring(0,8)}-${clean.substring(8,12)}-${clean.substring(12,16)}-${clean.substring(16,20)}-${clean.substring(20)}"
-        } else uuid
+    val clean = uuid.replace("-", "")
+    return if (clean.length == 32) {
+        "${clean.substring(0,8)}-${clean.substring(8,12)}-${clean.substring(12,16)}-${clean.substring(16,20)}-${clean.substring(20)}"
+    } else uuid
 }
 
 /**
@@ -629,16 +510,16 @@ fun formatUuid(uuid: String): String {
  * @return A URI for the new image, or null if the insertion fails.
  */
 fun createImageUri(context: android.content.Context): Uri? {
-        val contentResolver = context.contentResolver
-        val contentValues =
-                ContentValues().apply {
-                        put(
-                                MediaStore.Images.Media.DISPLAY_NAME,
-                                "profile_${System.currentTimeMillis()}.jpg"
-                        )
-                        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                }
-        return contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+    val contentResolver = context.contentResolver
+    val contentValues =
+            ContentValues().apply {
+                put(
+                        MediaStore.Images.Media.DISPLAY_NAME,
+                        "profile_${System.currentTimeMillis()}.jpg"
+                )
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            }
+    return contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
 }
 
 /**
@@ -649,13 +530,8 @@ fun createImageUri(context: android.content.Context): Uri? {
 @Preview(showBackground = true)
 @Composable
 fun ProfileScreenPreview() {
-        val context = LocalContext.current
-        SafeChatTheme {
-                Surface {
-                        ProfileScreen(
-                                onNavigateBack = {},
-                                viewModel = PreviewProfileViewModel(context)
-                        )
-                }
-        }
+    val context = LocalContext.current
+    SafeChatTheme {
+        Surface { ProfileScreen(onNavigateBack = {}, viewModel = PreviewProfileViewModel(context)) }
+    }
 }

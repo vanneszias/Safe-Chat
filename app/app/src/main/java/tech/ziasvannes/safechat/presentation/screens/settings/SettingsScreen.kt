@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.extended.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -131,7 +133,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit, viewModel: SettingsViewModel = hi
                         navigationIcon = {
                             IconButton(onClick = onNavigateBack) {
                                 Icon(
-                                        imageVector = Icons.Default.ArrowBack,
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = "Navigate back"
                                 )
                             }
@@ -152,7 +154,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit, viewModel: SettingsViewModel = hi
                 SwitchSettingItem(
                         title = "Dark Mode",
                         description = "Use dark theme",
-                        icon = Icons.Default.Favorite, // TODO DarkMode
+                        icon = Icons.Default.Settings,
                         checked = state.isDarkMode,
                         onCheckedChange = { viewModel.onEvent(SettingsEvent.ToggleDarkMode(it)) }
                 )
@@ -181,7 +183,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit, viewModel: SettingsViewModel = hi
                 SettingItem(
                         title = "Message Retention",
                         description = "Keep messages for ${state.messageRetentionPeriod} days",
-                        icon = Icons.Default.Lock, // TODO Schedule
+                        icon = Icons.Default.DateRange,
                         onClick = {
                             // In a real app, this would show a dialog to select retention period
                             Toast.makeText(
@@ -196,7 +198,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit, viewModel: SettingsViewModel = hi
                 SwitchSettingItem(
                         title = "Auto Delete Messages",
                         description = "Automatically delete old messages",
-                        icon = Icons.Default.Clear, // TODO DeleteForever
+                        icon = Icons.Default.Clear,
                         checked = state.autoDeleteMessages,
                         onCheckedChange = {
                             viewModel.onEvent(SettingsEvent.ToggleAutoDeleteMessages(it))
@@ -235,7 +237,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit, viewModel: SettingsViewModel = hi
                 SettingItem(
                         title = "Privacy Policy",
                         description = "View our privacy policy",
-                        icon = Icons.Default.Person, // TODO PrivacyTip
+                        icon = Icons.Default.Lock,
                         onClick = {
                             Toast.makeText(context, "View privacy policy", Toast.LENGTH_SHORT)
                                     .show()
@@ -245,7 +247,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit, viewModel: SettingsViewModel = hi
                 SettingItem(
                         title = "Terms of Service",
                         description = "View our terms of service",
-                        icon = Icons.Default.Check, // TODO Description
+                        icon = Icons.Default.Info,
                         onClick = {
                             Toast.makeText(context, "View terms of service", Toast.LENGTH_SHORT)
                                     .show()
@@ -338,7 +340,7 @@ fun SettingItem(
             }
 
             Icon(
-                    imageVector = Icons.Default.Clear, // TODO ChevronRight
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
