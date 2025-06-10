@@ -61,35 +61,45 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val isKeyboardOpen = WindowInsets.isImeVisible
+
     // If chatSessionId is provided, load messages and contact for that chat session
     LaunchedEffect(chatSessionId) { chatSessionId?.let { viewModel.loadChat(it) } }
 
-    // Unified scroll logic:
-    // Always scroll to the bottom if the keyboard is open.
-    // If the keyboard is closed, auto-scroll to the latest message only if
-    // the user is near the bottom or it's the first message.
-    LaunchedEffect(isKeyboardOpen, state.messages.size) {
+    // Enhanced scroll logic that prioritizes bottom-sticking during loading
+    // With reverseLayout=true, index 0 is the newest message (bottom)
+    LaunchedEffect(isKeyboardOpen, state.messages.size, state.isLoading) {
         if (state.messages.isNotEmpty()) {
             coroutineScope.launch {
-                if (isKeyboardOpen) {
-                    // If keyboard is open, always scroll to the very last message immediately
-                    listState.scrollToItem(state.messages.size - 1)
-                } else {
-                    // If keyboard is closed, use the smart auto-scroll logic
-                    val lastVisibleIndex =
-                            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                    val totalItems = state.messages.size
-                    val isNearBottom =
-                            totalItems - lastVisibleIndex <=
-                                    3 // User is within 3 messages of bottom
-                    if (isNearBottom || lastVisibleIndex == 0
-                    ) { // Always scroll on first message or when near bottom
-                        listState.animateScrollToItem(
-                                totalItems - 1
-                        ) // Scroll to the last item (latest message)
+                when {
+                    // Always scroll to bottom (index 0 with reverseLayout) when loading
+                    state.isLoading -> {
+                        listState.scrollToItem(0)
+                    }
+                    // If keyboard is open, always scroll to the newest message (index 0)
+                    isKeyboardOpen -> {
+                        listState.scrollToItem(0)
+                    }
+                    // If keyboard is closed and not loading, use the smart auto-scroll logic
+                    else -> {
+                        val firstVisibleIndex =
+                                listState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0
+                        val isNearBottom =
+                                firstVisibleIndex <= 2 // User is within 2 messages of newest
+
+                        if (isNearBottom || state.messages.size == 1) {
+                            listState.animateScrollToItem(0) // Scroll to newest message
+                        }
                     }
                 }
             }
+        }
+    }
+
+    // Additional effect to ensure we stick to bottom when transitioning from loading to loaded
+    LaunchedEffect(state.isLoading) {
+        // When loading finishes and we have messages, ensure we're at the newest message
+        if (!state.isLoading && state.messages.isNotEmpty()) {
+            coroutineScope.launch { listState.animateScrollToItem(0) }
         }
     }
 
@@ -186,15 +196,16 @@ fun ChatScreen(
                     }
                 }
 
-                // Messages List
+                // Messages List - Reversed layout puts newest messages at bottom
                 LazyColumn(
                         state = listState,
                         modifier = Modifier.weight(1f).fillMaxWidth(),
-                        reverseLayout = false,
+                        reverseLayout = true, // This makes newest messages appear at bottom
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(items = state.messages, key = { message -> message.id }) { message ->
+                    items(items = state.messages.reversed(), key = { message -> message.id }) {
+                            message ->
                         // Use our new MessageBubble component instead of the basic MessageItem
                         MessageBubble(
                                 message = message,

@@ -31,8 +31,20 @@ constructor(
         private val userSession: UserSession,
         private val apiService: ApiService
 ) : MessageRepository {
-    override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> = flow {
-        // 1. Fetch remote messages and update local DB if new
+    override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> {
+        return flow {
+            // 1. First, fetch remote messages and update local DB if new (one-time sync)
+            syncRemoteMessages(chatSessionId)
+            
+            // 2. Then start observing database changes and emit all updates
+            messageDao
+                .getMessagesForChat(chatSessionId.toString())
+                .map { entities -> entities.map { entity -> entity.toMessage() } }
+                .collect { emit(it) }
+        }
+    }
+    
+    private suspend fun syncRemoteMessages(chatSessionId: UUID) {
         val remoteApiMessages =
                 try {
                     apiService.getMessages(chatSessionId.toString())
@@ -41,7 +53,7 @@ constructor(
                             "LocalMessageRepository",
                             "Failed to fetch remote messages: ${e.message}"
                     )
-                    emptyList()
+                    return
                 }
 
         val localMessages = messageDao.getMessagesForChat(chatSessionId.toString()).first()
@@ -135,12 +147,6 @@ constructor(
                 messageDao.insertMessage(entity)
             }
         }
-
-        // 2. Emit all local messages for this chat
-        messageDao
-                .getMessagesForChat(chatSessionId.toString())
-                .map { list -> list.map { entity -> entity.toMessage() } }
-                .collect { emit(it) }
     }
 
     private suspend fun handleIncomingMessage(msg: Message): String? {
@@ -249,7 +255,8 @@ constructor(
     }
 
     override suspend fun sendMessage(message: Message): Result<Message> {
-        // Save locally with original plaintext for the sender's copy
+        // This method is only used for local storage - WebSocketMessageRepositoryImpl handles actual sending
+        // Save locally with SENDING status - WebSocket layer will update to SENT when server confirms
         messageDao.insertMessage(
                 MessageEntity(
                         id = message.id.toString(),
@@ -265,8 +272,6 @@ constructor(
                 )
         )
 
-        // Local repository only stores messages - actual sending is handled by WebSocket layer
-        // Just return success as the message is now stored locally
         return Result.success(message)
     }
 

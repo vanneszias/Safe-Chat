@@ -14,7 +14,9 @@ use futures_util::{sink::SinkExt, stream::StreamExt};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::broadcast;
+use tokio::time::sleep;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -28,6 +30,7 @@ pub struct WebSocketMessage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SendMessageData {
+    pub message_id: String,
     pub receiver_id: String,
     pub r#type: String,
     pub encrypted_content: String,
@@ -241,12 +244,13 @@ async fn handle_send_message(
     let send_data: SendMessageData = serde_json::from_value(data)
         .map_err(|e| format!("Failed to parse send_message data: {}", e))?;
 
-    // Parse receiver_id
+    // Parse receiver_id and message_id
     let receiver_id = Uuid::parse_str(&send_data.receiver_id)
         .map_err(|_| "Invalid receiver_id format".to_string())?;
+    let message_id = Uuid::parse_str(&send_data.message_id)
+        .map_err(|_| "Invalid message_id format".to_string())?;
 
-    // Generate message ID and timestamp
-    let message_id = Uuid::new_v4();
+    // Generate timestamp
     let now = Utc::now().with_timezone(&Brussels);
     let timestamp_millis = now.timestamp_millis();
 
@@ -277,7 +281,9 @@ async fn handle_send_message(
         return Err(format!("Database error: {}", e));
     }
 
-    // Create message notification
+    info!("Message {} stored in database with SENT status", message_id);
+
+    // Create message notification for receiver
     let message_notification = MessageNotification {
         id: message_id.to_string(),
         timestamp: timestamp_millis.to_string(),
@@ -289,17 +295,18 @@ async fn handle_send_message(
         iv: send_data.iv,
     };
 
-    // Send to receiver
-    broadcast_message_to_user(connections, receiver_id, message_notification.clone()).await;
+    // Send new message notification to receiver
+    broadcast_message_to_user(connections, receiver_id, message_notification).await;
     
-    // Send confirmation back to sender
-    if let Some(sender) = connections.get(&sender_id) {
-        if let Err(e) = sender.send(WSEvent::NewMessage(message_notification)) {
-            error!("Failed to send confirmation to sender {}: {}", sender_id, e);
-        }
-    }
+    // Send SENT status update to sender to confirm message was received by server
+    let sent_status_update = StatusUpdate {
+        message_id: message_id.to_string(),
+        status: "SENT".to_string(),
+        updated_by: "server".to_string(),
+    };
+    broadcast_status_update_to_user(connections, sender_id, sent_status_update).await;
 
-    info!("Message sent via WebSocket: {} -> {}", sender_id, receiver_id);
+    info!("Message sent via WebSocket: {} -> {}, sender notified of SENT status", sender_id, receiver_id);
     Ok(())
 }
 
@@ -319,6 +326,8 @@ async fn handle_update_status(
     if !["SENT", "DELIVERED", "READ", "FAILED"].contains(&status.as_str()) {
         return Err("Invalid status. Must be one of: SENT, DELIVERED, READ, FAILED".to_string());
     }
+
+    info!("Processing status update: message {} to status {} by user {}", message_id, status, user_id);
 
     // Get message details
     let message_check = match sqlx::query("SELECT receiver_id, sender_id FROM messages WHERE id = $1")
@@ -350,65 +359,67 @@ async fn handle_update_status(
         return Err("Only the message receiver can mark it as read".to_string());
     }
 
-    // If status is READ, delete the message instead of updating it
-    if status == "READ" {
-        let delete_result = sqlx::query("DELETE FROM messages WHERE id = $1")
-            .bind(message_id)
-            .execute(&state.db)
-            .await;
+    // Update the message status in database
+    let update_result = sqlx::query("UPDATE messages SET status = $1 WHERE id = $2")
+        .bind(&status)
+        .bind(message_id)
+        .execute(&state.db)
+        .await;
 
-        match delete_result {
-            Ok(result) => {
-                if result.rows_affected() > 0 {
-                    info!("Message {} marked as read and deleted by user {}", message_id, user_id);
+    match update_result {
+        Ok(result) => {
+            if result.rows_affected() > 0 {
+                info!("Message {} status updated to {} by user {}", message_id, status, user_id);
 
-                    // Send WebSocket notification to sender about delivered status
-                    let status_update = StatusUpdate {
-                        message_id: message_id.to_string(),
-                        status: "DELIVERED".to_string(),
-                        updated_by: user_id.to_string(),
-                    };
-                    broadcast_status_update_to_user(connections, sender_id, status_update).await;
-                } else {
-                    return Err("Message not found".to_string());
+                // Create status update notification
+                let status_update = StatusUpdate {
+                    message_id: message_id.to_string(),
+                    status: status.clone(),
+                    updated_by: user_id.to_string(),
+                };
+
+                // Always notify both sender and receiver about status changes
+                // This ensures both parties always know the current message status
+                broadcast_status_update_to_user(connections, sender_id, status_update.clone()).await;
+                broadcast_status_update_to_user(connections, receiver_id, status_update).await;
+                
+                info!("Broadcasted {} status update for message {} to both sender {} and receiver {}", 
+                      status, message_id, sender_id, receiver_id);
+
+                // If status is READ, schedule delayed deletion to ensure all parties received the update
+                if status == "READ" {
+                    let db_clone = state.db.clone();
+                    let message_id_clone = message_id;
+                    
+                    tokio::spawn(async move {
+                        // Wait 5 seconds to ensure all status updates are delivered
+                        sleep(Duration::from_secs(5)).await;
+                        
+                        // Delete the message from database
+                        match sqlx::query("DELETE FROM messages WHERE id = $1")
+                            .bind(message_id_clone)
+                            .execute(&db_clone)
+                            .await 
+                        {
+                            Ok(result) => {
+                                if result.rows_affected() > 0 {
+                                    info!("Successfully deleted read message {} after 5-second delay", message_id_clone);
+                                } else {
+                                    info!("Message {} was already deleted during the delay period", message_id_clone);
+                                }
+                            }
+                            Err(e) => {
+                                error!("Failed to delete read message {} after delay: {}", message_id_clone, e);
+                            }
+                        }
+                    });
                 }
-            }
-            Err(e) => {
-                return Err(format!("Failed to delete message: {}", e));
+            } else {
+                return Err(format!("Message {} not found for status update", message_id));
             }
         }
-    } else {
-        // For other statuses, just update the status
-        let update_result = sqlx::query("UPDATE messages SET status = $1 WHERE id = $2")
-            .bind(&status)
-            .bind(message_id)
-            .execute(&state.db)
-            .await;
-
-        match update_result {
-            Ok(result) => {
-                if result.rows_affected() > 0 {
-                    info!("Message {} status updated to {} by user {}", message_id, status, user_id);
-
-                    // Send WebSocket notification about status update
-                    let status_update = StatusUpdate {
-                        message_id: message_id.to_string(),
-                        status: status.clone(),
-                        updated_by: user_id.to_string(),
-                    };
-
-                    // Notify both sender and receiver about status changes
-                    broadcast_status_update_to_user(connections, sender_id, status_update.clone()).await;
-                    if receiver_id != user_id {
-                        broadcast_status_update_to_user(connections, receiver_id, status_update).await;
-                    }
-                } else {
-                    return Err("Message not found".to_string());
-                }
-            }
-            Err(e) => {
-                return Err(format!("Failed to update message status: {}", e));
-            }
+        Err(e) => {
+            return Err(format!("Failed to update message status: {}", e));
         }
     }
 
@@ -435,9 +446,13 @@ pub async fn broadcast_status_update_to_user(
     update: StatusUpdate,
 ) {
     if let Some(sender) = connections.get(&user_id) {
-        if let Err(e) = sender.send(WSEvent::StatusUpdate(update)) {
+        if let Err(e) = sender.send(WSEvent::StatusUpdate(update.clone())) {
             error!("Failed to send status update to user {}: {}", user_id, e);
+        } else {
+            info!("Successfully sent status update to user {}: message {} status {}", user_id, update.message_id, update.status);
         }
+    } else {
+        warn!("User {} not connected to WebSocket for status update: message {} status {}", user_id, update.message_id, update.status);
     }
 }
 

@@ -275,7 +275,6 @@ constructor(
             val contact = currentState.contact ?: return@launch
 
             try {
-                Log.d(TAG, "Marking messages as read for contact: ${contact.id}")
                 messageRepository.markMessagesAsRead(contact.id)
                 
                 // No need to call loadChat again - the flow collection will automatically 

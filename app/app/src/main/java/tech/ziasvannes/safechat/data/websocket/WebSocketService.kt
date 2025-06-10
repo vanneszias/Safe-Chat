@@ -159,8 +159,9 @@ class WebSocketService @Inject constructor() {
         sendMessage("mark_typing", mapOf("recipient_id" to recipientId))
     }
 
-    fun sendChatMessage(receiverId: String, type: String, encryptedContent: String, iv: String) {
+    fun sendChatMessage(messageId: String, receiverId: String, type: String, encryptedContent: String, iv: String) {
         sendMessage("send_message", mapOf(
+            "message_id" to messageId,
             "receiver_id" to receiverId,
             "type" to type,
             "encrypted_content" to encryptedContent,

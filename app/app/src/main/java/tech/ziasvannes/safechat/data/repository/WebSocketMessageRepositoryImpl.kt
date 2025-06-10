@@ -15,6 +15,7 @@ import tech.ziasvannes.safechat.data.models.ChatSession
 import tech.ziasvannes.safechat.data.models.Message
 import tech.ziasvannes.safechat.data.models.MessageStatus
 import tech.ziasvannes.safechat.data.models.MessageType
+import tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl
 import tech.ziasvannes.safechat.data.websocket.WebSocketEvent
 import tech.ziasvannes.safechat.data.websocket.WebSocketService
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
@@ -31,10 +32,6 @@ constructor(
         private val messageDao: tech.ziasvannes.safechat.data.local.dao.MessageDao
 ) : MessageRepository {
 
-    // Only keep status updates as real-time since they don't need database storage
-    private val _statusUpdates = MutableSharedFlow<Pair<UUID, MessageStatus>>(replay = 0, extraBufferCapacity = 100)
-    private val statusUpdates = _statusUpdates.asSharedFlow()
-
     // Keep track of processed message IDs to avoid duplicates
     private val processedMessageIds = mutableSetOf<UUID>()
 
@@ -43,26 +40,9 @@ constructor(
     }
 
     override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> {
-        // Use the local repository as the single source of truth
-        // WebSocket messages will be stored in the database and appear through this flow
-        return combine(
-                localMessageRepository.getMessages(chatSessionId).distinctUntilChanged(),
-                statusUpdates.onStart { emit(Pair(UUID(0, 0), MessageStatus.SENT)) }.distinctUntilChanged()
-        ) { baseMessages, statusUpdate ->
-            val updatedMessages = baseMessages.toMutableList()
-
-            // Only handle status updates in real-time
-            val (messageId, newStatus) = statusUpdate
-            if (messageId != UUID(0, 0)) {
-                val messageIndex = updatedMessages.indexOfFirst { it.id == messageId }
-                if (messageIndex != -1) {
-                    updatedMessages[messageIndex] = updatedMessages[messageIndex].copy(status = newStatus)
-                    Log.d(TAG, "Updated message status: $messageId -> $newStatus")
-                }
-            }
-
-            updatedMessages.sortedBy { it.timestamp }
-        }.distinctUntilChanged()
+        // Use the local repository as the single source of truth for messages
+        // Database reflects the server state through WebSocket status updates
+        return localMessageRepository.getMessages(chatSessionId)
     }
 
     override suspend fun sendMessage(message: Message): Result<Message> {
@@ -81,8 +61,6 @@ constructor(
                 decryptedContent = message.content
             )
             messageDao.insertMessage(messageEntity)
-            Log.d(TAG, "Message ${message.id} stored locally with SENDING status")
-            
             // Send through WebSocket
             val encryptedContent = Base64.getEncoder().encodeToString(message.encryptedContent)
             val iv = Base64.getEncoder().encodeToString(message.iv)
@@ -94,16 +72,16 @@ constructor(
             }
 
             webSocketService.sendChatMessage(
+                messageId = message.id.toString(),
                 receiverId = message.receiverId.toString(),
                 type = type,
                 encryptedContent = encryptedContent,
                 iv = iv
             )
 
-            Log.d(TAG, "Message sent via WebSocket: ${message.id}")
             Result.success(message)
         } catch (e: Exception) {
-            // Update local message status to FAILED
+            // If sending fails, update local message status to FAILED
             try {
                 messageDao.updateMessageStatus(message.id.toString(), MessageStatus.FAILED)
             } catch (dbError: Exception) {
@@ -116,11 +94,10 @@ constructor(
 
     override suspend fun updateMessageStatus(messageId: UUID, status: MessageStatus) {
         try {
-            // Send status update through WebSocket instead of REST API
+            // Send status update through WebSocket - server will broadcast to both parties
             webSocketService.updateMessageStatus(messageId.toString(), status.name)
-            Log.d(TAG, "Updated message status via WebSocket: $messageId -> $status")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to update message status via WebSocket: ${e.message}", e)
+            Log.e(TAG, "Failed to send status update via WebSocket: ${e.message}", e)
         }
     }
 
@@ -133,8 +110,6 @@ constructor(
     }
 
     override suspend fun markMessagesAsRead(chatSessionId: UUID) {
-        Log.d(TAG, "WebSocket repository received markMessagesAsRead request for chat: $chatSessionId")
-        
         val currentUserId = userSession.userId ?: return
 
         try {
@@ -146,33 +121,21 @@ constructor(
             }
 
             if (unreadReceivedMessages.isEmpty()) {
-                Log.d(TAG, "No unread messages for chat $chatSessionId")
                 return
             }
 
-            // Update local database status to READ first (for immediate UI update)
-            unreadReceivedMessages.forEach { message ->
-                messageDao.updateMessageStatus(message.id, MessageStatus.READ)
-            }
-
-            Log.d(TAG, "Marked ${unreadReceivedMessages.size} messages as read locally for chat $chatSessionId")
-
-            // Send status updates to server via WebSocket
+            // Send READ status updates to server via WebSocket
+            // Server will update the database and notify both sender and receiver
             unreadReceivedMessages.forEach { message ->
                 try {
                     webSocketService.updateMessageStatus(message.id, MessageStatus.READ.name)
-                    Log.d(TAG, "Sent READ status update via WebSocket for message ${message.id}")
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to send READ status update for message ${message.id}", e)
+                    Log.e(TAG, "Failed to send READ status via WebSocket for message ${message.id}: ${e.message}")
                 }
             }
 
-            // Messages are kept locally after being marked as read
-            // They will remain visible in the chat history
-
-            Log.d(TAG, "Completed read processing for ${unreadReceivedMessages.size} messages in chat $chatSessionId")
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to mark messages as read for chat $chatSessionId", e)
+            Log.e(TAG, "Failed to mark messages as read for chat $chatSessionId: ${e.message}", e)
         }
     }
 
@@ -186,22 +149,18 @@ constructor(
                     
                     // Prevent duplicate processing
                     if (processedMessageIds.contains(messageId)) {
-                        Log.d(TAG, "Message already processed, skipping: $messageId")
                         // Continue to next event instead of exiting collection
                     } else {
                         if (senderId == currentUserId) {
                             // This is a confirmation of our sent message
-                            Log.d(TAG, "Received confirmation for sent message: $messageId")
                             // Update the local message status to SENT
                             try {
                                 messageDao.updateMessageStatus(messageId.toString(), MessageStatus.SENT)
-                                Log.d(TAG, "Updated local message $messageId status to SENT")
                             } catch (e: Exception) {
                                 Log.e(TAG, "Failed to update sent message status: ${e.message}")
                             }
                         } else {
-                            // This is an incoming message from another user
-                            Log.d(TAG, "Received new incoming message: $messageId")
+                            // This is a new incoming message
                             storeWebSocketMessage(event.message)
                         }
                         
@@ -218,25 +177,24 @@ constructor(
                     val messageId = UUID.fromString(event.update.message_id)
                     val status = MessageStatus.valueOf(event.update.status)
                     
-                    if (status == MessageStatus.DELIVERED) {
-                        Log.d(TAG, "Server confirmed message $messageId was read and deleted from server")
-                    } else {
-                        Log.d(TAG, "Received status update via WebSocket: $messageId -> $status")
+                    // Update local database with the server status - this is the source of truth
+                    try {
+                        messageDao.updateMessageStatus(messageId.toString(), status)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to update local message status: ${e.message}", e)
                     }
-                    
-                    _statusUpdates.emit(Pair(messageId, status))
                 }
                 is WebSocketEvent.UserOnline -> {
-                    Log.d(TAG, "User came online: ${event.user.user_id}")
+                    // User came online
                 }
                 is WebSocketEvent.UserOffline -> {
-                    Log.d(TAG, "User went offline: ${event.user.user_id}")
+                    // User went offline
                 }
                 is WebSocketEvent.Connected -> {
-                    Log.d(TAG, "WebSocket connected")
+                    // WebSocket connected
                 }
                 is WebSocketEvent.Disconnected -> {
-                    Log.d(TAG, "WebSocket disconnected")
+                    // WebSocket disconnected
                 }
                 is WebSocketEvent.Error -> {
                     Log.e(TAG, "WebSocket error: ${event.error}")
@@ -260,11 +218,8 @@ constructor(
 
             // Skip messages that don't involve the current user
             if (senderId != currentUserId && receiverId != currentUserId) {
-                Log.d(TAG, "Skipping WebSocket message not involving current user: ${wsMessage.id}")
                 return
             }
-            
-            Log.d(TAG, "Processing WebSocket message ${wsMessage.id} from sender: $senderId to receiver: $receiverId")
 
             // Determine the correct chat session ID (the other user in the conversation)
             val chatSessionId = if (senderId == currentUserId) receiverId else senderId
@@ -274,7 +229,6 @@ constructor(
             val messageExists = existingMessages.any { it.id == wsMessage.id }
             
             if (messageExists) {
-                Log.d(TAG, "WebSocket message ${wsMessage.id} already exists in database, skipping")
                 return
             }
 
@@ -313,7 +267,7 @@ constructor(
             Log.d(TAG, "WebSocket message ${wsMessage.id} stored in database for chat session: $chatSessionId")
             
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to store WebSocket message: ${e.message}", e)
+            Log.e(TAG, "Failed to store WebSocket message ${wsMessage.id}: ${e.message}", e)
         }
     }
 
@@ -325,7 +279,6 @@ constructor(
 
         // Skip messages with no encrypted content
         if (msg.encryptedContent.isEmpty() || msg.iv.isEmpty()) {
-            Log.w(TAG, "WebSocket message ${msg.id} has no encrypted content - storing with error state")
             return "[🔒 Message could not be decrypted - missing encryption data]"
         }
 
@@ -333,21 +286,17 @@ constructor(
         var senderContact = contactRepository.getContactById(msg.senderId)
 
         if (senderContact == null) {
-            Log.w(TAG, "No contact found for WebSocket message sender ${msg.senderId} - storing with error state")
             return "[🔒 Message could not be decrypted - sender contact not available]"
         }
 
         val senderPublicKey = senderContact.publicKey
         if (senderPublicKey.isNullOrBlank()) {
-            Log.w(TAG, "No public key available for WebSocket message sender ${msg.senderId} - storing with error state")
             return "[🔒 Message could not be decrypted - sender key unavailable]"
         }
 
         // Attempt decryption
         return try {
-            Log.d(TAG, "Attempting to decrypt WebSocket message ${msg.id}")
-
-            val result = (encryptionRepository as? tech.ziasvannes.safechat.data.repository.EncryptionRepositoryImpl)
+            val result = (encryptionRepository as? EncryptionRepositoryImpl)
                 ?.decryptIncomingMessage(
                     senderPublicKeyBase64 = senderPublicKey,
                     encryptedContent = msg.encryptedContent,
@@ -355,14 +304,11 @@ constructor(
                 )
 
             if (result != null) {
-                Log.d(TAG, "Successfully decrypted WebSocket message ${msg.id}")
                 result
             } else {
-                Log.w(TAG, "Decryption returned null for WebSocket message ${msg.id}")
                 "[🔒 Message could not be decrypted - decryption failed]"
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to decrypt WebSocket message ${msg.id}: ${e.message}", e)
             "[🔒 Message could not be decrypted - ${e.message?.take(50) ?: "unknown error"}]"
         }
     }
