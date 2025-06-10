@@ -107,5 +107,9 @@ dependencies {
 
     // AndroidX Security Crypto
     implementation(libs.security.crypto)
+
+    // WebSocket
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.ws)
 }
 

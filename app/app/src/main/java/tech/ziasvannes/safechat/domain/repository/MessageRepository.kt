@@ -42,4 +42,11 @@ suspend fun deleteMessage(messageId: UUID)
  * @return A [Flow] emitting lists of [ChatSession] objects.
  */
 suspend fun getChatSessions(): Flow<List<ChatSession>>
+    /**
+ * Marks received messages as read for the specified chat session.
+ * Updates status locally and notifies the server. Messages are kept locally for chat history.
+ *
+ * @param chatSessionId The unique identifier of the chat session whose messages should be marked as read.
+ */
+suspend fun markMessagesAsRead(chatSessionId: UUID)
 }

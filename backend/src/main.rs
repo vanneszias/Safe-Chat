@@ -2,10 +2,10 @@ mod api;
 mod auth;
 mod crypto;
 mod state;
+mod websocket;
 
 use api::{
-    db_dump, get_messages_with_user, get_user_by_id, get_user_by_public_key, send_message,
-    update_message_status,
+    db_dump, get_messages_with_user, get_user_by_id, get_user_by_public_key,
 };
 use auth::{get_profile, login, register, update_profile, update_public_key};
 use axum::{Router, routing::get};
@@ -15,6 +15,7 @@ use state::AppState;
 use std::sync::Arc;
 use tower_http::services::ServeFile;
 use tracing_subscriber;
+use websocket::{create_connection_manager, websocket_handler};
 
 /// Returns a 200 OK response for health check endpoints.
 ///
@@ -76,7 +77,8 @@ async fn main() {
         .await
         .expect("Failed to connect to Postgres");
     let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-    let state = Arc::new(AppState { db, jwt_secret });
+    let connections = create_connection_manager();
+    let state = Arc::new(AppState { db, jwt_secret, connections });
 
     let app = Router::new()
         .route("/health", get(health_check))
@@ -85,23 +87,18 @@ async fn main() {
         .route("/profile", axum::routing::get(get_profile))
         .route("/profile", axum::routing::put(update_profile))
         .route("/profile/key", axum::routing::put(update_public_key))
-        .route("/messages", axum::routing::post(send_message))
         .route(
             "/messages/:user_id",
             axum::routing::get(get_messages_with_user),
-        )
-        .route(
-            "/messages/:message_id/status",
-            axum::routing::put(update_message_status),
         )
         .route(
             "/user/:public_key",
             axum::routing::get(get_user_by_public_key),
         )
         .route("/user/by-id/:user_id", axum::routing::get(get_user_by_id))
+        .route("/ws", get(websocket_handler))
         .route("/admin/dbdump", get(db_dump))
         .nest_service("/admin/dbtable.html", ServeFile::new("src/dbtable.html"))
-        .nest_service("/", ServeFile::new("src/dbtable.html"))
         .with_state(state);
 
     let port = std::env::var("SERVER_PORT").unwrap_or_else(|_| "8080".to_string());

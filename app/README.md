@@ -1,481 +1,330 @@
-# Safe Chat - Secure Messaging Application
+# Safe Chat - Secure Messaging Android Application
 
 ## Project Overview
 
-Safe Chat is a secure messaging application built with Kotlin Native for Android, implementing end-to-end encryption using the Diffie-Hellman key exchange protocol.
+Safe Chat is a secure messaging Android application built with Kotlin, implementing end-to-end encryption using X25519 key exchange and AES-GCM encryption. The app demonstrates modern Android development practices with Clean Architecture, Jetpack Compose, and real-time WebSocket communication.
 
 ## Architecture Overview
 
-The application follows MVVM (Model-View-ViewModel) architecture with Clean Architecture principles, ensuring separation of concerns and maintainable code.
+The application follows **Clean Architecture** principles with **MVVM (Model-View-ViewModel)** pattern, ensuring separation of concerns, testability, and maintainable code.
 
 ### Project Structure
 
 ```
 app/
 ├── data/
-│   ├── models/          # Data entities
-│   ├── repositories/    # Repository implementations
-│   └── datasources/     # Local and remote data sources
+│   ├── local/
+│   │   ├── entity/        # Room database entities
+│   │   └── dao/           # Data Access Objects
+│   ├── models/            # Domain data models
+│   ├── remote/            # API service and DTOs
+│   ├── repository/        # Repository implementations
+│   └── websocket/         # WebSocket management
 ├── domain/
-│   ├── usecases/       # Business logic
-│   └── repositories/    # Repository interfaces
+│   ├── repository/        # Repository interfaces
+│   └── usecases/          # Business logic use cases
 ├── presentation/
-│   ├── viewmodels/     # ViewModels for each screen
-│   ├── views/          # Composable screens
-│   └── components/     # Reusable UI components
-└── utils/
-    ├── encryption/     # Encryption utilities
-    └── extensions/     # Kotlin extensions
+│   ├── navigation/        # Navigation components
+│   ├── screens/           # Composable screens
+│   ├── viewmodels/        # ViewModels for each screen
+│   └── components/        # Reusable UI components
+├── di/                    # Dependency Injection (Hilt)
+├── session/               # User session management
+└── ui/
+    └── theme/             # Material Design theme
 ```
 
-## Development Stages
+## Current Implementation Status
 
-### Stage 1: Core Architecture Setup
+✅ **Completed Features:**
+- User registration and authentication with secure credential storage
+- Real-time messaging with WebSocket connections
+- End-to-end encryption using X25519 + AES-GCM
+- Contact management with public key exchange
+- Message status tracking (SENDING → SENT → READ)
+- Local message storage with Room database
+- Modern UI with Jetpack Compose and Material Design 3
+- Secure key storage using Android Keystore and EncryptedSharedPreferences
+- Profile management with avatar support
+- Connection management with automatic reconnection
+- Bidirectional status updates for message synchronization
 
-#### 1.1 Data Layer Implementation
+## Technology Stack
 
-##### Models
+### Core Technologies
+- **Language:** Kotlin
+- **UI Framework:** Jetpack Compose with Material Design 3
+- **Architecture:** Clean Architecture + MVVM
+- **Dependency Injection:** Hilt
+- **Database:** Room (SQLite) for local storage
+- **Networking:** Retrofit for REST API, OkHttp for WebSocket
+- **Reactive Programming:** Kotlin Coroutines and Flow
 
+### Security & Cryptography
+- **Key Exchange:** X25519 (Elliptic Curve Diffie-Hellman)
+- **Message Encryption:** AES-GCM with secure random IVs
+- **Key Storage:** Android Keystore for private keys
+- **Credential Storage:** EncryptedSharedPreferences
+- **Cryptographic Library:** Bouncy Castle + Google Tink
+- **JWT:** Secure token storage and management
+
+### Additional Libraries
+- **Image Loading:** Coil for profile avatars
+- **Serialization:** Gson for JSON parsing
+- **Security:** AndroidX Security Crypto for encrypted preferences
+
+## Data Models
+
+### Core Domain Models
+
+#### Contact
 ```kotlin
 data class Contact(
-    val id: UUID,                    // Unique identifier for the contact
-    val name: String,                // Display name of the contact
-    val publicKey: String,           // Public key used for encryption
-    val lastSeen: Long,              // Timestamp of last activity
-    val status: ContactStatus,       // Current online status
-    val avatar: String?              // Optional profile picture URL
+    val id: UUID,
+    val name: String,
+    val publicKey: String,
+    val lastSeen: Long,
+    val status: ContactStatus,
+    val avatar: String? = null
 )
+```
 
+#### Message
+```kotlin
 data class Message(
-    val id: UUID,                    // Unique identifier for the message
-    val content: String,             // Decrypted message content
-    val timestamp: Long,             // Time when message was sent
-    val senderId: UUID,              // ID of message sender
-    val receiverId: UUID,            // ID of message recipient
-    val status: MessageStatus,       // Current delivery status
-    val type: MessageType,           // Type of message content
-    val encryptedContent: ByteArray, // Encrypted message content
-    val iv: ByteArray                // Initialization vector for encryption
+    val id: UUID,
+    val content: String?,
+    val timestamp: Long,
+    val senderId: UUID,
+    val receiverId: UUID,
+    val status: MessageStatus,
+    val type: MessageType,
+    val encryptedContent: ByteArray,
+    val iv: ByteArray
 )
+```
 
-data class ChatSession(
-    val id: UUID,                    // Unique identifier for the chat
-    val participantIds: List<UUID>,  // List of users in the chat
-    val lastMessage: Message?,       // Most recent message
-    val unreadCount: Int,            // Number of unread messages
-    val encryptionStatus: EncryptionStatus // Current encryption state
-)
-
-sealed class MessageType {
-    object Text : MessageType()                                                    // Plain text messages
-    data class Image(val url: String) : MessageType()                             // Image messages with URL
-    data class File(val url: String, val name: String, val size: Long) : MessageType() // File attachments
-}
-
+#### Message Status Flow
+```kotlin
 enum class MessageStatus {
-    SENDING,    // Message is being sent
-    SENT,       // Message has been sent to server
-    DELIVERED,  // Message has been delivered to recipient
-    READ,       // Message has been read by recipient
-    FAILED      // Message failed to send
-}
-
-enum class ContactStatus {
-    ONLINE,     // Contact is currently active
-    OFFLINE,    // Contact is not connected
-    AWAY        // Contact is inactive
-}
-
-enum class EncryptionStatus {
-    NOT_ENCRYPTED,           // No encryption established
-    KEY_EXCHANGE_IN_PROGRESS, // Setting up encryption
-    ENCRYPTED               // Secure communication active
+    SENDING,    // Message created locally
+    SENT,       // Confirmed received by server
+    READ,       // Read by recipient
+    FAILED      // Failed to send
 }
 ```
 
-##### Repository Interfaces
+## Security Implementation
 
+### Encryption Architecture
+1. **Key Generation:** X25519 key pairs generated on device
+2. **Shared Secret:** ECDH key exchange for each contact
+3. **Message Encryption:** AES-GCM with unique IVs per message
+4. **Key Storage:** Private keys secured in Android Keystore
+5. **Forward Secrecy:** New shared secrets for enhanced security
+
+### Security Features
+- **End-to-End Encryption:** Messages encrypted before leaving device
+- **Secure Key Storage:** Hardware-backed Android Keystore when available
+- **No Server Plaintext:** Server never sees unencrypted message content
+- **Automatic Cleanup:** Messages deleted from server after read confirmation
+- **Secure Authentication:** JWT tokens with secure storage
+- **Input Validation:** Comprehensive validation throughout the app
+
+## Repository Pattern Implementation
+
+### Local Data Management
+- **ContactRepositoryImpl:** Manages local contact storage and synchronization
+- **LocalMessageRepositoryImpl:** Handles local message database operations
+- **EncryptionRepositoryImpl:** Manages cryptographic operations and key storage
+
+### Remote Data Management
+- **AuthRepository:** Handles user authentication and profile management
+- **WebSocketMessageRepositoryImpl:** Manages real-time messaging and status updates
+
+### Data Synchronization
+- Single source of truth: Local Room database
+- WebSocket events directly update local storage
+- Reactive UI updates through Flow emissions
+
+## UI Architecture (Jetpack Compose)
+
+### Screen Composition
+- **ContactListScreen:** Displays contacts with real-time status
+- **ChatDetailScreen:** Message thread with encryption indicators
+- **AddContactScreen:** Public key-based contact addition
+- **ProfileScreen:** User profile and settings management
+- **AuthScreens:** Login and registration flows
+
+### Navigation
+- **Bottom Navigation:** Main app sections (Chats, Profile, Settings)
+- **Nested Navigation:** Deep linking support for chat threads
+- **State Management:** ViewModel-based state handling with proper lifecycle awareness
+
+### Theme System
+- **Material Design 3:** Modern design language
+- **Dynamic Colors:** System-aware theming
+- **Dark Mode:** Full dark theme support
+- **Responsive Design:** Adaptive layouts for different screen sizes
+
+## WebSocket Implementation
+
+### Real-time Communication
+- **Connection Management:** Automatic connection with reconnection logic
+- **Message Broadcasting:** Instant message delivery
+- **Status Synchronization:** Real-time status updates for both parties
+- **Presence Indicators:** Online/offline status for contacts
+
+### Event Handling
 ```kotlin
-interface ContactRepository {
-    suspend fun getContacts(): Flow<List<Contact>>                    // Retrieves list of all contacts
-    suspend fun addContact(contact: Contact)                         // Adds a new contact to the repository
-    suspend fun updateContact(contact: Contact)                      // Updates existing contact information
-    suspend fun deleteContact(contactId: UUID)                       // Removes a contact from the repository
-    suspend fun getContactById(id: UUID): Contact?                   // Finds a specific contact by ID
-    suspend fun searchContacts(query: String): Flow<List<Contact>>   // Searches contacts based on query string
-}
-
-interface MessageRepository {
-    suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>>  // Retrieves messages for a specific chat
-    suspend fun sendMessage(message: Message): Result<Message>         // Sends a new message and returns result
-    suspend fun updateMessageStatus(messageId: UUID, status: MessageStatus)  // Updates message delivery status
-    suspend fun deleteMessage(messageId: UUID)                         // Deletes a specific message
-    suspend fun getChatSessions(): Flow<List<ChatSession>>            // Retrieves all active chat sessions
-}
-
-interface EncryptionRepository {
-    suspend fun generateKeyPair(): KeyPair                            // Creates new encryption key pair
-    suspend fun storeKeyPair(keyPair: KeyPair)                       // Saves key pair securely
-    suspend fun getPublicKey(): PublicKey                            // Retrieves stored public key
-    suspend fun getPrivateKey(): PrivateKey                          // Retrieves stored private key
-    suspend fun computeSharedSecret(publicKey: PublicKey): ByteArray  // Calculates shared secret for encryption
+sealed class WebSocketEvent {
+    data class NewMessage(val message: MessageNotification) : WebSocketEvent()
+    data class StatusUpdate(val update: StatusUpdateData) : WebSocketEvent()
+    data class UserOnline(val user: UserStatus) : WebSocketEvent()
+    data class UserOffline(val user: UserStatus) : WebSocketEvent()
+    object Connected : WebSocketEvent()
+    object Disconnected : WebSocketEvent()
+    data class Error(val error: String) : WebSocketEvent()
 }
 ```
 
-#### 1.2 Domain Layer Implementation
+## Development Setup
 
-##### Use Cases
+### Prerequisites
+- Android Studio Hedgehog (2023.1.1) or later
+- Kotlin 1.9.0+
+- Android SDK 24+ (minimum), targeting SDK 35
+- Java 11
 
+### Build Configuration
 ```kotlin
-class GetContactsUseCase @Inject constructor(
-    private val contactRepository: ContactRepository                   // Repository dependency for contact operations
-) {
-    operator fun invoke(): Flow<List<Contact>> =                      // Returns flow of contacts list
-        contactRepository.getContacts()
-}
-
-class SendMessageUseCase @Inject constructor(
-    private val messageRepository: MessageRepository,                  // Repository for message operations
-    private val encryptionRepository: EncryptionRepository           // Repository for encryption operations
-) {
-    suspend operator fun invoke(
-        content: String,                                             // Message content to be sent
-        receiverId: UUID,                                           // ID of message recipient
-        type: MessageType                                           // Type of message (text, image, etc.)
-    ): Result<Message> {
-        // Implementation details for message encryption and sending
+android {
+    compileSdk = 35
+    defaultConfig {
+        minSdk = 24
+        targetSdk = 35
     }
-}
-
-class InitiateKeyExchangeUseCase @Inject constructor(
-    private val encryptionRepository: EncryptionRepository           // Repository for encryption operations
-) {
-    suspend operator fun invoke(contactId: UUID): Result<Unit> {     // Initiates key exchange with contact
-        // Implementation details for key exchange
-    }
-}
-```
-
-#### 1.3 Presentation Layer Implementation
-
-##### ViewModels
-
-```kotlin
-@HiltViewModel
-class ChatViewModel @Inject constructor(
-    private val sendMessageUseCase: SendMessageUseCase,               // Use case for sending messages
-    private val getMessagesUseCase: GetMessagesUseCase,              // Use case for retrieving messages
-    savedStateHandle: SavedStateHandle                               // Saves view state across configurations
-) : ViewModel() {
-    private val _chatState = MutableStateFlow<ChatState>(ChatState.Loading)  // Mutable state for chat UI
-    val chatState: StateFlow<ChatState> = _chatState.asStateFlow()           // Immutable state exposed to UI
-
-    // Implementation details
-}
-
-data class ChatState(
-    val messages: List<Message> = emptyList(),                       // List of messages in chat
-    val isLoading: Boolean = false,                                  // Loading state indicator
-    val error: String? = null,                                       // Error message if any
-    val encryptionStatus: EncryptionStatus = EncryptionStatus.NOT_ENCRYPTED  // Current encryption state
-)
-```
-
-### Stage 2: UI Implementation
-
-#### 2.1 Theme and Styling
-
-```kotlin
-object SafeChatTheme {
-    val colors = darkColors(                                         // Dark theme color palette
-        primary = Color(0xFF2196F3),                                // Primary brand color
-        secondary = Color(0xFF03DAC5),                              // Secondary accent color
-        background = Color(0xFF121212),                             // App background color
-        surface = Color(0xFF1E1E1E)                                 // Surface elements color
-    )
-
-    val typography = Typography(                                     // Text style definitions
-        // Typography definitions
-    )
-
-    val shapes = Shapes(                                            // UI component shape definitions
-        small = RoundedCornerShape(4.dp),                          // Small component corners
-        medium = RoundedCornerShape(8.dp),                         // Medium component corners
-        large = RoundedCornerShape(12.dp)                          // Large component corners
-    )
-}
-```
-
-#### 2.2 Common Components
-
-- MessageBubble
-- ContactListItem
-- EncryptionStatusIndicator
-- CustomTextField
-- LoadingIndicator
-
-#### 2.3 Screen Implementations
-
-- ContactListScreen
-- ChatScreen
-- ProfileScreen
-- SettingsScreen
-
-### Stage 3: Encryption Implementation
-
-#### 3.1 Diffie-Hellman Implementation
-
-```kotlin
-class DiffieHellmanManager @Inject constructor(                              // Manager class for Diffie-Hellman key exchange
-    private val keyStore: KeyStore,                                          // Secure storage for cryptographic keys
-    private val secureRandom: SecureRandom                                   // Cryptographically secure random number generator
-) {
-    private val keySize = 2048                                              // Size of the encryption key in bits
-    private val algorithm = "DH"                                            // Diffie-Hellman algorithm identifier
-
-    fun generateKeyPair(): KeyPair {                                        // Generates public-private key pair
-        val parameterSpec = DHParameterSpec(p, g)                          // Parameters for DH key generation
-        val keyPairGenerator = KeyPairGenerator.getInstance(algorithm)      // Creates instance of key pair generator
-        keyPairGenerator.initialize(parameterSpec)                         // Initializes generator with DH parameters
-        return keyPairGenerator.generateKeyPair()                          // Returns the generated key pair
-    }
-
-    fun computeSharedSecret(publicKey: PublicKey, privateKey: PrivateKey): ByteArray {  // Computes shared secret key
-        val keyAgreement = KeyAgreement.getInstance(algorithm)             // Creates key agreement instance
-        keyAgreement.init(privateKey)                                     // Initializes with private key
-        keyAgreement.doPhase(publicKey, true)                            // Executes key agreement phase
-        return keyAgreement.generateSecret()                              // Returns the computed shared secret
-    }
-
-    fun encryptMessage(message: String, sharedSecret: ByteArray): EncryptedMessage {    // Encrypts message using shared secret
-        // Implementation details for message encryption
-    }
-
-    fun decryptMessage(encryptedMessage: EncryptedMessage, sharedSecret: ByteArray): String {  // Decrypts message using shared secret
-        // Implementation details for message decryption
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 }
 ```
 
-### Stage 4: API Integration
+### Key Dependencies
+```gradle
+// Core Android
+implementation("androidx.core:core-ktx:1.12.0")
+implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
 
-#### 4.1 API Routes and Models
+// Compose
+implementation(platform("androidx.compose:compose-bom:2024.02.00"))
+implementation("androidx.compose.ui:ui")
+implementation("androidx.compose.material3:material3")
+implementation("androidx.activity:activity-compose:1.8.2")
 
-Base URL: `api.safechat.ziasvannes.tech/v1`
+// Architecture
+implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+implementation("androidx.navigation:navigation-compose:2.7.6")
 
-##### Authentication
+// Dependency Injection
+implementation("com.google.dagger:hilt-android:2.48")
+kapt("com.google.dagger:hilt-compiler:2.48")
 
-```http
-POST /auth/register
-Content-Type: application/json
+// Database
+implementation("androidx.room:room-runtime:2.6.1")
+implementation("androidx.room:room-ktx:2.6.1")
+kapt("androidx.room:room-compiler:2.6.1")
 
-{
-    "username": string,
-    "password": string,
-    "publicKey": string
-}
+// Networking
+implementation("com.squareup.retrofit2:retrofit:2.9.0")
+implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
-POST /auth/login
-Content-Type: application/json
-
-{
-    "username": string,
-    "password": string
-}
-
-POST /auth/refresh-token
-Authorization: Bearer {refresh_token}
+// Security
+implementation("com.google.crypto.tink:tink-android:1.10.0")
+implementation("org.bouncycastle:bcprov-jdk18on:1.77")
+implementation("androidx.security:security-crypto:1.1.0-alpha06")
 ```
 
-##### Contacts
+## Testing Strategy
 
-```http
-GET /contacts
-Authorization: Bearer {token}
+### Unit Testing
+- **Repository Tests:** Data layer testing with mock dependencies
+- **ViewModel Tests:** Business logic validation
+- **Encryption Tests:** Cryptographic operation verification
+- **Utility Tests:** Helper function validation
 
-POST /contacts
-Authorization: Bearer {token}
-Content-Type: application/json
+### Integration Testing
+- **Database Tests:** Room database operations
+- **API Tests:** Network layer integration
+- **WebSocket Tests:** Real-time communication testing
 
-{
-    "username": string,
-    "publicKey": string
-}
+### UI Testing
+- **Compose Tests:** Screen composition and interaction testing
+- **Navigation Tests:** Screen flow validation
+- **Accessibility Tests:** Screen reader compatibility
 
-DELETE /contacts/{id}
-Authorization: Bearer {token}
+## Security Considerations
 
-PUT /contacts/{id}/key-exchange
-Authorization: Bearer {token}
-Content-Type: application/json
+### Production Readiness
+⚠️ **This is a proof-of-concept implementation for educational purposes.**
 
-{
-    "publicKey": string
-}
-```
+For production use, consider:
+- **Key Rotation:** Implement periodic key rotation mechanisms
+- **Certificate Pinning:** Pin server certificates for API communication
+- **Root Detection:** Implement root/jailbreak detection
+- **Code Obfuscation:** Protect against reverse engineering
+- **Secure Communication:** Implement additional transport security
+- **Audit & Compliance:** Regular security audits and compliance validation
 
-##### Messages
+### Privacy Features
+- **Local Data Encryption:** All local data encrypted at rest
+- **Memory Protection:** Sensitive data cleared from memory
+- **Secure Deletion:** Cryptographic key deletion when appropriate
+- **Minimal Data Collection:** No unnecessary personal data storage
 
-```http
-GET /messages/{chatId}
-Authorization: Bearer {token}
+## Build Instructions
 
-POST /messages
-Authorization: Bearer {token}
-Content-Type: application/json
+1. **Clone Repository:**
+   ```bash
+   git clone <repository-url>
+   cd Safe-Chat/app
+   ```
 
-{
-    "receiverId": string,
-    "content": string,
-    "encryptedContent": string,
-    "iv": string,
-    "type": string
-}
+2. **Backend Setup:**
+   ```bash
+   # Ensure backend is running on localhost:8080
+   cd ../backend
+   cargo run
+   ```
 
-PUT /messages/{id}/status
-Authorization: Bearer {token}
-Content-Type: application/json
+3. **Android Build:**
+   ```bash
+   # Open in Android Studio or use command line
+   ./gradlew build
+   ./gradlew installDebug
+   ```
 
-{
-    "status": string
-}
-```
+4. **Environment Configuration:**
+   - Update API base URL in `ApiService.kt` if needed
+   - Configure WebSocket endpoint for your backend
 
-#### 4.2 WebSocket Events
+## Future Enhancements
 
-#### 4.2 WebSocket Events
+### Planned Features
+- **Group Messaging:** Multi-participant encrypted conversations
+- **File Sharing:** Encrypted file and image transmission
+- **Voice Messages:** Encrypted audio message support
+- **Message Search:** Local encrypted message search
+- **Backup/Restore:** Secure key and message backup system
+- **Push Notifications:** Encrypted push notification support
 
-```kotlin
-sealed class WebSocketMessage {
-    data class NewMessage(
-        val messageId: UUID,           // Unique identifier for the message
-        val senderId: UUID,            // ID of the user who sent the message
-        val encryptedContent: String,  // Encrypted message content
-        val iv: String,                // Initialization vector for decryption
-        val timestamp: Long            // Time when message was sent
-    ) : WebSocketMessage()
+### Performance Optimizations
+- **Message Pagination:** Efficient loading of large conversation histories
+- **Image Optimization:** Compressed image transmission and caching
+- **Background Sync:** Efficient background message synchronization
+- **Memory Management:** Optimized memory usage for large conversations
 
-    data class MessageStatus(
-        val messageId: UUID,           // ID of the message being updated
-        val status: MessageStatus,     // New status of the message
-        val timestamp: Long            // Time when status was updated
-    ) : WebSocketMessage()
+---
 
-    data class ContactStatus(
-        val contactId: UUID,           // ID of the contact whose status changed
-        val status: ContactStatus,     // New status of the contact
-        val lastSeen: Long            // Last active timestamp
-    ) : WebSocketMessage()
-}
-
-interface WebSocketListener {
-    fun onNewMessage(message: WebSocketMessage.NewMessage)
-    fun onMessageStatusUpdate(status: WebSocketMessage.MessageStatus)
-    fun onContactStatusUpdate(status: WebSocketMessage.ContactStatus)
-}
-```
-
-### Stage 5: Testing
-
-#### 5.1 Unit Tests
-
-- ViewModel Tests
-- UseCase Tests
-- Repository Tests
-- Encryption Tests
-
-#### 5.2 UI Tests
-
-- Navigation Tests
-- Component Tests
-- End-to-End Tests
-
-#### 5.3 Security Tests
-
-- Encryption Tests
-- Key Exchange Tests
-- Storage Security Tests
-
-## Best Practices
-
-### Code Style
-
-- Follow Kotlin coding conventions
-- Use meaningful names
-- Keep functions small and focused
-- Document complex logic
-- Use sealed classes for state management
-
-### Architecture
-
-- Single Responsibility Principle
-- Dependency Injection (Hilt)
-- Repository Pattern
-- Clean Architecture
-- Immutable State
-
-### Security
-
-- No plaintext storage
-- Secure key storage using Android Keystore
-- Message authentication using HMAC
-- Diffie-Hellman key exchange for secure communication
-- Strong encryption algorithms (AES-256)
-- Input validation
-- Regular security audits
-- Perfect Forward Secrecy implementation
-
-### Testing
-
-- TDD approach
-- Unit test coverage > 80%
-- UI automation tests
-- Integration tests
-- Security penetration testing
-
-## Dependencies
-
-```kotlin
-dependencies {
-    // Core Android and Lifecycle components
-    implementation(libs.androidx.core.ktx)                              // Kotlin extensions for Android core features
-    implementation(libs.androidx.lifecycle.viewmodel.compose)           // ViewModel integration with Compose
-
-    // Jetpack Compose UI components and tooling
-    implementation(libs.androidx.compose.ui)                            // Core UI components for Compose
-    implementation(libs.androidx.compose.material3)                     // Material Design 3 components
-    implementation(libs.androidx.compose.ui.tooling.preview)            // Preview support for Compose UI
-
-    // Navigation components for Compose
-    implementation(libs.androidx.navigation.compose)                    // Navigation framework for Compose
-
-    // Dependency injection with Hilt
-    implementation(libs.hilt.android)                                  // Hilt for Android dependency injection
-    kapt(libs.hilt.compiler)                                          // Annotation processor for Hilt
-
-    // Local database with Room
-    implementation(libs.androidx.room.runtime)                         // Room database runtime
-    implementation(libs.androidx.room.ktx)                            // Kotlin extensions for Room
-    kapt(libs.androidx.room.compiler)                                 // Room annotation processor
-
-    // Network communication
-    implementation(libs.retrofit)                                      // HTTP client for API calls
-    implementation(libs.retrofit.converter.gson)                       // JSON serialization/deserialization
-    implementation(libs.okhttp3.logging.interceptor)                  // Network call logging for debugging
-
-    // Coroutines for asynchronous programming
-    implementation(libs.kotlinx.coroutines.android)                    // Android-specific coroutines support
-
-    // Security components
-    implementation(libs.androidx.security.crypto)                      // Encrypted data storage
-    implementation(libs.tink)                                         // Google's cryptographic library
-
-    // Testing dependencies
-    testImplementation(libs.junit)                                    // Unit testing framework
-    testImplementation(libs.mockk)                                    // Mocking library for Kotlin
-    testImplementation(libs.kotlinx.coroutines.test)                  // Testing utilities for coroutines
-    androidTestImplementation(libs.androidx.test.ext.junit)           // Android JUnit extensions
-    androidTestImplementation(libs.androidx.test.espresso.core)       // UI testing framework
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)   // Compose UI testing utilities
-}
-```
+**This Android application works seamlessly with the Safe Chat Rust backend, providing a complete secure messaging solution with modern Android development practices and robust end-to-end encryption.**

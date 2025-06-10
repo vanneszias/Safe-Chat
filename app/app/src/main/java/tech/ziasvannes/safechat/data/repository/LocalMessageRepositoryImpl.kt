@@ -1,5 +1,6 @@
 package tech.ziasvannes.safechat.data.repository
 
+import java.util.Base64
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -9,8 +10,13 @@ import kotlinx.coroutines.flow.map
 import tech.ziasvannes.safechat.data.local.dao.MessageDao
 import tech.ziasvannes.safechat.data.local.entity.MessageEntity
 import tech.ziasvannes.safechat.data.models.ChatSession
+import tech.ziasvannes.safechat.data.models.ContactStatus
+import tech.ziasvannes.safechat.data.models.EncryptionStatus
 import tech.ziasvannes.safechat.data.models.Message
 import tech.ziasvannes.safechat.data.models.MessageStatus
+import tech.ziasvannes.safechat.data.models.MessageType
+import tech.ziasvannes.safechat.data.remote.ApiService
+import tech.ziasvannes.safechat.data.remote.MessageResponse
 import tech.ziasvannes.safechat.domain.repository.ContactRepository
 import tech.ziasvannes.safechat.domain.repository.EncryptionRepository
 import tech.ziasvannes.safechat.domain.repository.MessageRepository
@@ -23,18 +29,39 @@ constructor(
         private val encryptionRepository: EncryptionRepository,
         private val contactRepository: ContactRepository,
         private val userSession: UserSession,
-        private val remoteRepository: MessageRepository, // For remote sync
-        private val apiService:
-                tech.ziasvannes.safechat.data.remote.ApiService // For fetching contact info
+        private val apiService: ApiService
 ) : MessageRepository {
-    override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> = flow {
-        // 1. Fetch remote messages and update local DB if new
-        val remoteMessages = remoteRepository.getMessages(chatSessionId).first()
+    override suspend fun getMessages(chatSessionId: UUID): Flow<List<Message>> {
+        return flow {
+            // 1. First, fetch remote messages and update local DB if new (one-time sync)
+            syncRemoteMessages(chatSessionId)
+            
+            // 2. Then start observing database changes and emit all updates
+            messageDao
+                .getMessagesForChat(chatSessionId.toString())
+                .map { entities -> entities.map { entity -> entity.toMessage() } }
+                .collect { emit(it) }
+        }
+    }
+    
+    private suspend fun syncRemoteMessages(chatSessionId: UUID) {
+        val remoteApiMessages =
+                try {
+                    apiService.getMessages(chatSessionId.toString())
+                } catch (e: Exception) {
+                    android.util.Log.w(
+                            "LocalMessageRepository",
+                            "Failed to fetch remote messages: ${e.message}"
+                    )
+                    return
+                }
+
         val localMessages = messageDao.getMessagesForChat(chatSessionId.toString()).first()
         val localIds = localMessages.map { it.id }.toSet()
         val currentUserId = userSession.userId ?: UUID(0, 0)
 
-        // Simple deduplication - only filter out messages that already exist locally
+        // Convert API messages to domain messages and filter new ones
+        val remoteMessages = remoteApiMessages.map { it.toMessage() }
         val newMessages = remoteMessages.filter { msg -> msg.id.toString() !in localIds }
 
         android.util.Log.d(
@@ -108,8 +135,10 @@ constructor(
                                 type = msg.type,
                                 encryptedContent = msg.encryptedContent,
                                 iv = msg.iv,
-                                decryptedContent = decryptedContent
-                        )
+                                decryptedContent =
+                                        decryptedContent // Store with decrypted content like static
+                                // routes
+                                )
 
                 android.util.Log.d(
                         "LocalMessageRepository",
@@ -118,12 +147,6 @@ constructor(
                 messageDao.insertMessage(entity)
             }
         }
-
-        // 2. Emit all local messages for this chat
-        messageDao
-                .getMessagesForChat(chatSessionId.toString())
-                .map { list -> list.map { entity -> entity.toMessage() } }
-                .collect { emit(it) }
     }
 
     private suspend fun handleIncomingMessage(msg: Message): String? {
@@ -210,7 +233,7 @@ constructor(
                             name = userResponse.username,
                             publicKey = userResponse.public_key,
                             lastSeen = System.currentTimeMillis(),
-                            status = tech.ziasvannes.safechat.data.models.ContactStatus.ONLINE,
+                            status = ContactStatus.ONLINE,
                             avatar = userResponse.avatar
                     )
 
@@ -232,7 +255,8 @@ constructor(
     }
 
     override suspend fun sendMessage(message: Message): Result<Message> {
-        // Save locally with original plaintext for the sender's copy
+        // This method is only used for local storage - WebSocketMessageRepositoryImpl handles actual sending
+        // Save locally with SENDING status - WebSocket layer will update to SENT when server confirms
         messageDao.insertMessage(
                 MessageEntity(
                         id = message.id.toString(),
@@ -248,18 +272,7 @@ constructor(
                 )
         )
 
-        // Send remotely and update local status
-        val result = remoteRepository.sendMessage(message)
-
-        result
-                .onSuccess { sentMessage ->
-                    messageDao.updateMessageStatus(message.id.toString(), MessageStatus.SENT)
-                }
-                .onFailure {
-                    messageDao.updateMessageStatus(message.id.toString(), MessageStatus.FAILED)
-                }
-
-        return result
+        return Result.success(message)
     }
 
     override suspend fun updateMessageStatus(messageId: UUID, status: MessageStatus) {
@@ -285,9 +298,7 @@ constructor(
                                         ),
                                 lastMessage = entity.toMessage(),
                                 unreadCount = 0,
-                                encryptionStatus =
-                                        tech.ziasvannes.safechat.data.models.EncryptionStatus
-                                                .ENCRYPTED
+                                encryptionStatus = EncryptionStatus.ENCRYPTED
                         )
                     }
                 }
@@ -295,10 +306,10 @@ constructor(
     }
 
     /**
-     * Marks received messages as read for the specified chat session. Updates status locally and
-     * notifies the server. Messages are kept locally for chat history - they are not deleted.
+     * Marks received messages as read for the specified chat session. Updates status locally
+     * and notifies the server. Messages are kept locally for chat history.
      */
-    suspend fun markMessagesAsRead(chatSessionId: UUID) {
+    override suspend fun markMessagesAsRead(chatSessionId: UUID) {
         val currentUserId = userSession.userId ?: return
 
         try {
@@ -322,30 +333,23 @@ constructor(
                 messageDao.updateMessageStatus(message.id, MessageStatus.READ)
             }
 
-            // Then notify server (don't block UI on this)
-            unreadReceivedMessages.forEach { message ->
-                try {
-                    remoteRepository.updateMessageStatus(
-                            UUID.fromString(message.id),
-                            MessageStatus.READ
-                    )
-                    android.util.Log.d(
-                            "LocalMessageRepository",
-                            "Notified server that message ${message.id} was read"
-                    )
-                } catch (e: Exception) {
-                    android.util.Log.w(
-                            "LocalMessageRepository",
-                            "Failed to notify server about read status for message ${message.id}",
-                            e
-                    )
-                    // Don't fail the whole operation if server notification fails
-                }
-            }
+            android.util.Log.d(
+                    "LocalMessageRepository",
+                    "Marked ${unreadReceivedMessages.size} messages as read locally for chat $chatSessionId"
+            )
+
+            // WebSocket will handle server-side status updates and deletion
+            android.util.Log.d(
+                    "LocalMessageRepository",
+                    "Messages marked as read - WebSocket will handle server notification and deletion."
+            )
+
+            // Messages are kept locally after being marked as read
+            // They will remain visible in the chat history
 
             android.util.Log.d(
                     "LocalMessageRepository",
-                    "Marked ${unreadReceivedMessages.size} messages as read for chat $chatSessionId"
+                    "Completed read processing for ${unreadReceivedMessages.size} messages in chat $chatSessionId - messages marked as read and kept locally"
             )
         } catch (e: Exception) {
             android.util.Log.w(
@@ -426,4 +430,50 @@ constructor(
             android.util.Log.w("LocalMessageRepository", "Failed to cleanup corrupted messages", e)
         }
     }
+}
+
+/** Converts a [MessageResponse] from the remote API into a [Message] domain model. */
+private fun MessageResponse.toMessage(): Message {
+    // Safe Base64 decoding with error handling
+    val decodedEncryptedContent =
+            try {
+                Base64.getDecoder().decode(encrypted_content)
+            } catch (e: IllegalArgumentException) {
+                android.util.Log.w(
+                        "LocalMessageRepository",
+                        "Failed to decode encrypted_content for message $id",
+                        e
+                )
+                ByteArray(0) // Return empty array if decoding fails
+            }
+
+    val decodedIv =
+            try {
+                Base64.getDecoder().decode(iv)
+            } catch (e: IllegalArgumentException) {
+                android.util.Log.w(
+                        "LocalMessageRepository",
+                        "Failed to decode IV for message $id",
+                        e
+                )
+                ByteArray(0) // Return empty array if decoding fails
+            }
+
+    return Message(
+            id = UUID.fromString(id),
+            content = content,
+            timestamp = timestamp,
+            senderId = UUID.fromString(sender_id),
+            receiverId = UUID.fromString(receiver_id),
+            status = MessageStatus.valueOf(status),
+            type =
+                    when (type) {
+                        "Text" -> MessageType.Text
+                        "Image" -> MessageType.Image("")
+                        "File" -> MessageType.File("", "", 0)
+                        else -> MessageType.Text
+                    },
+            encryptedContent = decodedEncryptedContent,
+            iv = decodedIv
+    )
 }
