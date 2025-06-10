@@ -318,16 +318,15 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(4.dp))
                 if (state.userId.isNotBlank()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val formattedUuid = formatUuid(state.userId)
                         Text(
-                                text = "ID: $formattedUuid",
+                                text = "ID: ${state.userId}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         IconButton(
                                 onClick = {
                                     clipboard.setPrimaryClip(
-                                            ClipData.newPlainText("ID", formattedUuid)
+                                            ClipData.newPlainText("ID", state.userId)
                                     )
                                 }
                         ) {
@@ -388,11 +387,6 @@ fun ProfileScreen(
 
                         // Public key display
                         if (state.isKeyVisible) {
-                            val displayKey =
-                                    state.userPublicKey
-                                            .replace("/", "")
-                                            .chunked(4)
-                                            .joinToString("-")
                             Surface(
                                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                                     shape = MaterialTheme.shapes.medium,
@@ -403,7 +397,7 @@ fun ProfileScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                            text = displayKey,
+                                            text = state.userPublicKey,
                                             style = MaterialTheme.typography.bodyMedium,
                                             modifier = Modifier.weight(1f)
                                     )
@@ -413,7 +407,7 @@ fun ProfileScreen(
                                                 clipboard.setPrimaryClip(
                                                         ClipData.newPlainText(
                                                                 "Public Key",
-                                                                displayKey
+                                                                state.userPublicKey
                                                         )
                                                 )
                                             }
@@ -511,23 +505,6 @@ fun ProfileScreen(
             }
         }
     }
-}
-
-/**
- * Formats a string as a canonical UUID (8-4-4-4-12 dashed pattern) if it contains exactly 32
- * hexadecimal characters.
- *
- * If the input string, after removing dashes, has 32 characters, it is reformatted as a standard
- * UUID. Otherwise, the original string is returned.
- *
- * @param uuid The string to attempt to format as a UUID.
- * @return The formatted UUID string, or the original input if formatting is not possible.
- */
-fun formatUuid(uuid: String): String {
-    val clean = uuid.replace("-", "")
-    return if (clean.length == 32) {
-        "${clean.substring(0,8)}-${clean.substring(8,12)}-${clean.substring(12,16)}-${clean.substring(16,20)}-${clean.substring(20)}"
-    } else uuid
 }
 
 /**
