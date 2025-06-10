@@ -1,0 +1,19 @@
+# Screenshots Directory
+
+This directory contains app screenshots showcasing the SafeChat Android application interface.
+
+## Planned Screenshots:
+
+### Authentication Flow
+- login-screen.png - User login interface
+- register-screen.png - User registration flow
+- profile-setup.png - Initial profile configuration
+
+### Main Interface
+- contact-list.png - Main contacts view with status indicators
+- chat-interface.png - Encrypted messaging interface
+- add-contact.png - Public key-based contact addition
+
+### Message Status Flow
+- message-sent.png - Message marked as "Sent ✓"
+- message-read.png - Message marked as "Read ✓✓"

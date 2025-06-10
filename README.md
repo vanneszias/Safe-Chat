@@ -14,12 +14,13 @@
 
 ## 📑 Table of Contents
 
-* [Overview](#overview)
-* [Features](#features)
-* [Architecture](#architecture)
-* [Security Details](#security-details)
-* [Message Flow (Mermaid Chart)](#message-flow-mermaid-chart)
-* [License](#license)
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Security Details](#security-details)
+- [App Screenshots](#app-screenshots)
+- [Message Flow (Mermaid Chart)](#message-flow-mermaid-chart)
+- [License](#license)
 
 ---
 
@@ -27,25 +28,25 @@
 
 SafeChat illustrates the fundamentals of secure messaging with:
 
-* **Frontend:** Android app written in Kotlin, using Room for local storage and Jetpack Compose UI.
-* **Backend:** Rust server using Axum framework with PostgreSQL database.
-* **Encryption:** X25519 for key exchange, AES-GCM for message encryption (client-side).
-* **Authentication:** JWT tokens with Argon2 password hashing.
-* **Key Storage:** Android Keystore for local private key security.
-* **Real-time Communication:** WebSocket connections for instant messaging and status updates.
+- **Frontend:** Android app written in Kotlin, using Room for local storage and Jetpack Compose UI.
+- **Backend:** Rust server using Axum framework with PostgreSQL database.
+- **Encryption:** X25519 for key exchange, AES-GCM for message encryption (client-side).
+- **Authentication:** JWT tokens with Argon2 password hashing.
+- **Key Storage:** Android Keystore for local private key security.
+- **Real-time Communication:** WebSocket connections for instant messaging and status updates.
 
 ---
 
 ## ✨ Features
 
-* Secure user registration and login with Argon2 password hashing.
-* Public key-based contact management.
-* Client-side end-to-end encryption and decryption.
-* Local encrypted message storage using Room.
-* Message status updates (SENDING → SENT → READ) with real-time synchronization.
-* Bidirectional status notifications - both sender and receiver always know the current message status.
-* Privacy protection - server auto-deletes messages 5 seconds after they are marked as read.
-* WebSocket-based real-time communication for instant message delivery and status updates.
+- Secure user registration and login with Argon2 password hashing.
+- Public key-based contact management.
+- Client-side end-to-end encryption and decryption.
+- Local encrypted message storage using Room.
+- Message status updates (SENDING → SENT → READ) with real-time synchronization.
+- Bidirectional status notifications - both sender and receiver always know the current message status.
+- Privacy protection - server auto-deletes messages 5 seconds after they are marked as read.
+- WebSocket-based real-time communication for instant message delivery and status updates.
 
 ---
 
@@ -65,13 +66,32 @@ SafeChat illustrates the fundamentals of secure messaging with:
 
 ## 🔐 Security Details
 
-* **Key Exchange:** X25519 (Elliptic-curve Diffie-Hellman) with X.509 encoding
-* **Message Encryption:** AES-GCM (client-side, with IV and authentication tag)
-* **Password Hashing:** Argon2 with secure parameters
-* **Key Storage:** Android Keystore (for private keys and JWTs)
-* **Communication:** WebSocket for real-time messaging and status updates
-* **Message Lifecycle:** Messages auto-deleted from server 5 seconds after READ status
-* **Database:** PostgreSQL for server storage, Room (SQLite) for local Android storage
+- **Key Exchange:** X25519 (Elliptic-curve Diffie-Hellman) with X.509 encoding
+- **Message Encryption:** AES-GCM (client-side, with IV and authentication tag)
+- **Password Hashing:** Argon2 with secure parameters
+- **Key Storage:** Android Keystore (for private keys and JWTs)
+- **Communication:** WebSocket for real-time messaging and status updates
+- **Message Lifecycle:** Messages auto-deleted from server 5 seconds after READ status
+- **Database:** PostgreSQL for server storage, Room (SQLite) for local Android storage
+
+---
+
+## 📸 App Screenshots
+
+### Authentication Flow
+| Login Screen | Registration Screen | Profile Setup |
+|:---:|:---:|:---:|
+| ![Login](images/screenshots/login-screen.png) | ![Register](images/screenshots/register-screen.png) | ![Profile](images/screenshots/profile-setup.png) |
+
+### Main Interface
+| Contact List | Chat Interface | Add Contact |
+|:---:|:---:|:---:|
+| ![Contacts](images/screenshots/contact-list.png) | ![Chat](images/screenshots/chat-interface.png) | ![Add Contact](images/screenshots/add-contact.png) |
+
+### Message Status Flow
+| Sent | Read |
+|:---:|:---:|
+![Sent](images/screenshots/message-sent.png) | ![Read](images/screenshots/message-read.png) |
 
 ---
 
@@ -85,181 +105,163 @@ The diagram below visualizes registration, authentication, contact management, a
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant App as SafeChatApp (Android)
-    participant Keystore as Android Keystore/EncryptedPrefs
-    participant RoomDB as Room Database (Local)
-    participant WS as WebSocket Connection
-    participant Backend as SafeChatBackend (Rust/Axum)
-    participant DB as PostgreSQL
-
-    %% --- Registration & Key Generation ---
-    Note over U,DB: User Registration with X25519 Key Generation
-    U->>App: Enter username/password and tap Register
-    App->>Keystore: Generate X25519 keypair locally
-    App->>App: Encode public key with X.509 headers
-    App->>Backend: POST /auth/register {username, password}
-    Backend->>Backend: Hash password with Argon2
-    Backend->>Backend: Generate server X25519 keypair
-    Backend->>DB: INSERT user (id, username, password_hash, server_public_key)
-    Backend-->>App: Return {id: UUID, public_key: X.509, token: JWT}
-    App->>Keystore: Store JWT token securely
-    App->>Backend: PUT /profile/key {public_key: X.509_encoded}
-    Backend->>Backend: Validate X.509 public key format
-    Backend->>DB: UPDATE users SET public_key = X.509_key WHERE id = user_id
-    Backend-->>App: 200 OK
-    App->>RoomDB: Store user profile locally
-    App-->>U: Show "Registration successful"
-
-    %% --- Login & WebSocket Connection ---
-    Note over U,DB: Authentication & Real-time Connection Setup
-    U->>App: Enter credentials and tap Login
-    App->>Backend: POST /auth/login {username, password}
-    Backend->>DB: SELECT user WHERE username = ?
-    Backend->>Backend: Verify password with Argon2
+    participant App as SafeChatApp
+    participant KS as Keystore
+    participant DB as RoomDB
+    participant WS as WebSocket
+    participant BE as Backend
+    participant PG as PostgreSQL
+    Note over U,PG: Registration with X25519 Key Generation
+    U->>App: Enter username/password, tap Register
+    App->>KS: Generate X25519 keypair
+    App->>App: Encode public key (X.509)
+    App->>BE: POST /auth/register
+    BE->>BE: Hash password (Argon2)
+    BE->>BE: Generate server X25519 keypair
+    BE->>PG: INSERT user data
+    BE-->>App: Return {id, public_key, JWT}
+    App->>KS: Store JWT securely
+    App->>BE: PUT /profile/key
+    BE->>BE: Validate X.509 format
+    BE->>PG: UPDATE user public_key
+    BE-->>App: 200 OK
+    App->>DB: Store profile locally
+    App-->>U: "Registration successful"
+    Note over U,PG: Authentication & Real-time Setup
+    U->>App: Enter credentials, tap Login
+    App->>BE: POST /auth/login
+    BE->>PG: SELECT user
+    BE->>BE: Verify password (Argon2)
     alt Valid credentials
-        Backend-->>App: Return {token: JWT}
-        App->>Keystore: Store JWT securely
-        App->>Backend: GET /profile (with Bearer token)
-        Backend->>Backend: Validate JWT and extract user_id
-        Backend->>DB: SELECT user profile data
-        Backend-->>App: Return user profile with public_key
-        App->>RoomDB: Store profile in local database
-        App->>WS: Establish WebSocket connection to /ws?token=JWT
-        Backend->>Backend: Validate JWT from WebSocket query param
-        Backend-->>WS: WebSocket connection established
-        WS-->>App: Connected event
-        App->>RoomDB: Load contacts and recent messages
-        App-->>U: Show main chat interface
-    else Invalid credentials
-        Backend-->>App: 401 Unauthorized
-        App-->>U: Show error message
+        BE-->>App: Return JWT
+        App->>KS: Store JWT
+        App->>BE: GET /profile (Bearer token)
+        BE->>BE: Validate JWT
+        BE->>PG: SELECT profile
+        BE-->>App: Return profile + public_key
+        App->>DB: Store profile
+        App->>WS: Connect /ws?token=JWT
+        BE->>BE: Validate JWT
+        BE-->>WS: Connection established
+        WS-->>App: Connected
+        App->>DB: Load contacts & messages
+        App-->>U: Show chat interface
+    else Invalid
+        BE-->>App: 401 Unauthorized
+        App-->>U: Error message
     end
-
-    %% --- Adding a Contact via Public Key ---
-    Note over U,DB: Contact Discovery & Local Storage
+    Note over U,PG: Contact Discovery
     U->>App: Enter contact's public key
-    App->>Backend: GET /user/{public_key} (with Bearer token)
-    Backend->>Backend: Validate JWT authorization
-    Backend->>DB: SELECT user WHERE public_key = X.509_key
-    alt Contact found
-        Backend-->>App: Return {id, username, public_key, created_at, avatar}
-        App->>App: Compute shared secret (ECDH: local_private × contact_public)
-        App->>Keystore: Store shared secret securely
-        App->>RoomDB: INSERT contact locally
-        App-->>U: Show contact added successfully
-    else Contact not found
-        Backend-->>App: 404 Not Found
-        App-->>U: Show "Contact not found" error
+    App->>BE: GET /user/{public_key}
+    BE->>BE: Validate JWT
+    BE->>PG: SELECT user by public_key
+    alt Found
+        BE-->>App: Return contact info
+        App->>App: Compute shared secret (ECDH)
+        App->>KS: Store shared secret
+        App->>DB: INSERT contact
+        App-->>U: "Contact added"
+    else Not found
+        BE-->>App: 404 Not Found
+        App-->>U: "Contact not found"
     end
-
-    %% --- Real-time Message Sending ---
-    Note over U,DB: End-to-End Encrypted Messaging with Status Updates
-    U->>App: Type message and tap Send
-    App->>App: Generate UUID for message
-    App->>App: Generate cryptographically secure random 12-byte IV
-    App->>Keystore: Retrieve X25519 shared secret for recipient
-    App->>App: Encrypt message with AES-GCM-256 (plaintext + shared_secret + IV)
-    Note over App: Creates encrypted_content + authentication_tag
-    App->>RoomDB: Store message locally (id, plaintext, encrypted_content, iv, status=SENDING)
-    App-->>U: Show message with "Sending..." status indicator
-    App->>WS: Send {message_type: "send_message", data: {id: UUID, receiver_id: UUID, encrypted_content: base64, iv: base64, type: "Text"}}
-    WS->>Backend: Forward encrypted message data
-    Backend->>Backend: Generate server timestamp
-    Backend->>Backend: Validate receiver_id exists
-    Backend->>DB: INSERT message (id, sender_id, receiver_id, encrypted_content, iv, status=SENT, timestamp)
-    Note over Backend: Server stores only encrypted content, never plaintext
-    Backend->>WS: Broadcast to sender {message_type: "status_update", data: {message_id: UUID, status: "SENT", updated_by: sender_id}}
-    WS-->>App: Status update received by sender
-    App->>RoomDB: UPDATE message SET status=SENT WHERE id=message_id
-    App-->>U: Update UI to show "Sent ✓" status
-    Backend->>WS: Broadcast to receiver {message_type: "new_message", data: {complete_message_object}}
-    Note over Backend: Real-time delivery if receiver online, queued if offline
-
-    %% --- Real-time Message Receiving ---
-    Note over U,DB: Instant Message Delivery & Decryption
-    WS-->>App: New message notification {id, sender_id, encrypted_content: base64, iv: base64, timestamp, status: "SENT"}
-    App->>App: Decode base64 encrypted_content and IV
-    App->>Keystore: Retrieve X25519 shared secret for sender_id
-    App->>App: Decrypt with AES-GCM-256 (encrypted_content + shared_secret + IV)
-    App->>App: Verify authentication tag for message integrity
-    Note over App: Ensures message hasn't been tampered with
-    App->>RoomDB: Store message (id, sender_id, plaintext_content, encrypted_content, iv, status=SENT, timestamp)
-    App-->>U: Display decrypted message in chat interface with timestamp
-    Note over App: Encryption/decryption happens entirely client-side
-    
-    %% --- Message Read Status & Privacy Protection ---
-    Note over U,DB: Bidirectional Status Updates & Auto-deletion for Privacy
-    U->>App: Open/view message thread (message becomes visible)
-    App->>WS: Send {message_type: "update_status", data: {message_id: UUID, status: "READ"}}
-    WS->>Backend: Forward read status update
-    Backend->>Backend: Validate message ownership (user is sender or receiver)
-    Backend->>DB: UPDATE messages SET status='READ' WHERE id=message_id
-    Backend->>WS: Broadcast to sender {message_type: "status_update", data: {message_id: UUID, status: "READ", updated_by: reader_id}}
-    Backend->>WS: Broadcast to receiver {message_type: "status_update", data: {message_id: UUID, status: "read", updated_by: reader_id}}
-    WS-->>App: Status update received (both sender & receiver)
-    App->>RoomDB: UPDATE messages SET status='read' WHERE id=message_id
-    App-->>U: Update UI to show "Read ✓✓" status (blue checkmarks)
-    Backend->>Backend: Schedule async deletion task with 5-second delay
-    Note over Backend: Tokio::spawn background task for privacy protection
-    Backend->>Backend: tokio::time::sleep(Duration::from_secs(5))
-    Backend->>DB: DELETE FROM messages WHERE id=message_id
-    Note over Backend: Permanent deletion ensures forward secrecy & privacy
-    Note over Backend: Delayed deletion allows status updates to reach all parties
-
-    %% --- Connection Management & Error Handling ---
-    Note over U,DB: WebSocket Reliability & Reconnection with Security
-    alt WebSocket disconnected (network/server issue)
-        WS-->>App: Connection lost event detected
-        App-->>U: Show "Connecting..." indicator
-        App->>App: Start exponential backoff reconnection (1s, 2s, 4s, 8s, max 30s)
-        loop Reconnection attempts
-            App->>Keystore: Retrieve stored JWT token
-            App->>WS: Reconnect to /ws?token=JWT
-            Backend->>Backend: Validate JWT (check expiry, signature)
-            alt JWT valid & reconnection successful
-                WS-->>App: Connected event
-                App-->>U: Show "Connected" indicator
-                App->>Backend: GET /messages/{user_id} to sync missed messages
-                Backend->>Backend: Authenticate with Bearer token
-                Backend->>DB: SELECT messages WHERE (sender_id=user OR receiver_id=user) AND timestamp > last_sync
-                Backend-->>App: Return encrypted message history
-                App->>App: Process each encrypted message
-                App->>RoomDB: Merge messages (avoid duplicates by UUID)
-                App-->>U: Update chat interface with synchronized messages
-                App->>App: Reset reconnection backoff timer
-            else JWT expired or invalid
-                App->>App: Clear stored credentials
-                App-->>U: Redirect to login screen
-            else Network still unavailable
-                App->>App: Increase backoff delay (exponential)
-                App-->>U: Show "Retrying connection..." with countdown
+    Note over U,PG: E2E Encrypted Messaging
+    U->>App: Type message, tap Send
+    App->>App: Generate UUID & 12-byte IV
+    App->>KS: Get shared secret
+    App->>App: Encrypt (AES-GCM-256)
+    Note over App: Creates encrypted_content + auth_tag
+    App->>DB: Store locally (status=SENDING)
+    App-->>U: Show "Sending..." status
+    App->>WS: Send encrypted message
+    WS->>BE: Forward message
+    BE->>BE: Generate timestamp
+    BE->>BE: Validate receiver_id
+    BE->>PG: INSERT message (encrypted only)
+    Note over BE: Server never sees plaintext
+    BE->>WS: Broadcast to sender (status: SENT)
+    WS-->>App: Status update
+    App->>DB: UPDATE status=SENT
+    App-->>U: Show "Sent ✓"
+    BE->>WS: Broadcast to receiver
+    Note over BE: Real-time if online, queued if offline
+    Note over U,PG: Instant Delivery & Decryption
+    WS-->>App: New message notification
+    App->>App: Decode base64 content & IV
+    App->>KS: Get shared secret
+    App->>App: Decrypt (AES-GCM-256)
+    App->>App: Verify auth tag
+    Note over App: Ensures integrity
+    App->>DB: Store message
+    App-->>U: Display decrypted message
+    Note over App: All crypto client-side
+    Note over U,PG: Status Updates & Privacy
+    U->>App: View message thread
+    App->>WS: Send read status
+    WS->>BE: Forward status
+    BE->>BE: Validate ownership
+    BE->>PG: UPDATE status='read'
+    BE->>WS: Broadcast to both parties
+    WS-->>App: Status update
+    App->>DB: UPDATE status='read'
+    App-->>U: Show "Read ✓✓"
+    BE->>BE: Schedule 5s deletion task
+    Note over BE: Tokio spawn background task
+    BE->>BE: Sleep 5 seconds
+    BE->>PG: DELETE message
+    Note over BE: Forward secrecy protection
+    Note over U,PG: WebSocket Reliability
+    alt Connection lost
+        WS-->>App: Connection lost
+        App-->>U: Show "Connecting..."
+        App->>App: Start backoff (1s, 2s, 4s, 8s, max 30s)
+        loop Reconnection
+            App->>KS: Get JWT
+            App->>WS: Reconnect /ws?token=JWT
+            BE->>BE: Validate JWT
+            alt JWT valid
+                WS-->>App: Connected
+                App-->>U: Show "Connected"
+                App->>BE: GET /messages to sync
+                BE->>BE: Auth with Bearer token
+                BE->>PG: SELECT recent messages
+                BE-->>App: Return encrypted history
+                App->>App: Process messages
+                App->>DB: Merge (avoid duplicates)
+                App-->>U: Update chat interface
+                App->>App: Reset backoff
+            else JWT expired
+                App->>App: Clear credentials
+                App-->>U: Redirect to login
+            else Network unavailable
+                App->>App: Increase backoff
+                App-->>U: Show retry countdown
             end
         end
     end
-
-    %% --- Offline Message Synchronization & Security Validation ---
-    Note over U,DB: Secure Message Synchronization & Integrity Verification
-    App->>Backend: GET /messages/{contact_id} (with Bearer: JWT header)
-    Backend->>Backend: Validate JWT signature and extract user_id claims
-    Backend->>Backend: Verify user_id has permission to access messages with contact_id
-    Backend->>DB: SELECT id, sender_id, receiver_id, encrypted_content, iv, status, timestamp FROM messages WHERE (sender_id=user_id AND receiver_id=contact_id) OR (sender_id=contact_id AND receiver_id=user_id) ORDER BY timestamp DESC LIMIT 50
-    Backend-->>App: Return JSON array of encrypted message objects
-    loop For each encrypted message in response
-        App->>App: Validate message structure and required fields
-        App->>Keystore: Retrieve X25519 shared secret for contact_id
-        App->>App: Attempt AES-GCM decryption with (encrypted_content + shared_secret + IV)
-        alt Decryption successful
-            App->>App: Verify message integrity with authentication tag
-            App->>RoomDB: INSERT OR REPLACE message (prevent duplicates by UUID)
-            App-->>U: Update chat interface with decrypted message
-        else Decryption failed
-            App->>App: Log decryption error (possible key mismatch)
-            App-->>U: Show "Unable to decrypt message" placeholder
-            Note over App: Handles forward secrecy and key rotation scenarios
+    Note over U,PG: Secure Message Sync
+    App->>BE: GET /messages/{contact_id}
+    BE->>BE: Validate JWT & extract claims
+    BE->>BE: Verify access permissions
+    BE->>PG: SELECT messages (LIMIT 50)
+    BE-->>App: Return encrypted array
+    loop Each message
+        App->>App: Validate structure
+        App->>KS: Get shared secret
+        App->>App: Attempt AES-GCM decryption
+        alt Success
+            App->>App: Verify auth tag
+            App->>DB: INSERT OR REPLACE
+            App-->>U: Update chat
+        else Failed
+            App->>App: Log error
+            App-->>U: Show decrypt error
+            Note over App: Handles key rotation
         end
     end
-    Note over App: Local Room database serves as single source of truth for UI
-    Note over App: WebSocket events update Room DB, UI reactively updates via Flow
+    Note over App: RoomDB is single source of truth
+    Note over App: WebSocket updates DB, UI reacts via Flow
+
 ```
 
 </details>
